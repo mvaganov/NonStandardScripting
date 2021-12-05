@@ -7,7 +7,7 @@ using System.Diagnostics;
 using NonStandard.Data.Parse;
 
 namespace NonStandard.Extension {
-	public static class ReflectionExtension {
+	public static partial class ReflectionExtension {
 		public static Type GetICollectionType(this Type type) {
 			foreach (Type i in type.GetInterfaces()) {
 				if (i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICollection<>)) {

@@ -6,7 +6,7 @@ using System.Text;
 
 // TODO enable square braces to attempt to seek an array-element/array-sublist/table-element/object-element if possible, and use that behavior by default (a new list is explicitly started by a comma)
 namespace NonStandard.Data.Parse {
-	class CodeRules {
+	public class CodeRules {
 
 		public static ParseRuleSet
 			String, Char, Number, Hexadecimal, Boolean, Expression, SquareBrace, GenericArgs, CodeBody,

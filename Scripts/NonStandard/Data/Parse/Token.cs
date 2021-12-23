@@ -179,7 +179,10 @@ namespace NonStandard.Data.Parse {
 		public void Invalidate() { length = -1; }
 		public bool Equals(Token other) { return index == other.index && length == other.length && meta == other.meta; }
 		public override bool Equals(object obj) { if (obj is Token) return Equals((Token)obj); return false; }
-		public override int GetHashCode() { return meta.GetHashCode() ^ index ^ length; }
+		public override int GetHashCode() {
+			if (meta == null) { return index ^ length; }
+			return meta.GetHashCode() ^ index ^ length;
+		}
 		public int CompareTo(Token other) {
 			int comp = index.CompareTo(other.index);
 			if (comp != 0) return comp;

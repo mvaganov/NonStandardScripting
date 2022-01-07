@@ -44,7 +44,7 @@ namespace NonStandard.Data.Parse {
 			new DelimOp("if", "if statement",syntax:CodeRules.syntax_if_,resolve:CodeRules.op_if_statement, order:10, breaking:false),
 		};
 		public static Delim[] _maybe_operator = new Delim[] {
-			new DelimOp("maybe", "maybe modifier",syntax:CodeRules.syntax_mayB,resolve:CodeRules.op_mayB, order:210, breaking:false),
+			new DelimOp("maybe", "maybe operator",syntax:CodeRules.syntax_mayB,resolve:CodeRules.op_mayB, order:210, breaking:false),
 		};
 		public static Delim[] _not_operator = new Delim[] {
 			new DelimOp("not", "not modifier",syntax:CodeRules.syntax_not,resolve:CodeRules.op_not, order:220, breaking:false),
@@ -351,6 +351,25 @@ namespace NonStandard.Data.Parse {
 			}
 			return false;
 		}
+		public static bool op_SearchForMember(Token path, out object value, out Type type, object scope) {
+			if (path.meta is string) {
+				return op_SearchForMember(path.ToString(), out value, out type, scope);
+			}
+			if (path.IsSyntax) {
+				UnityEngine.Debug.Log("hey check me out!");
+				SyntaxTree tree = path.GetAsSyntaxNode();
+				if (tree.IsMembershipOperation) {
+					if (!op_SearchForMember(tree.tokens[0], out value, out type, scope)) {
+						return false;
+					}
+					scope = value;
+					return op_SearchForMember(tree.tokens[2], out value, out type, scope);
+				}
+			}
+			value = null;
+			type = null;
+			return false;
+		}
 		public static bool op_Resolve_SimplifyListOfArguments(ITokenErrLog tok, ref object value, object scope) {
 			List<object> args = value as List<object>;
 			if (args != null) {
@@ -619,12 +638,52 @@ namespace NonStandard.Data.Parse {
 			Token operand = syntax.tokens[1];
 			//string what = operand.ToString();
 			//Show.Log(what);
-			op_ResolveToken(tok, operand, scope, out object result, out Type cType);
-			result = (result is bool tb && tb != false);
-			if (result is bool f && f == false) {
-				tok.ClearErrors();
+			//object result = operand.Resolve(tok, scope, isItResolvedEnough);
+			//result = (result is bool tb && tb != false);
+			//if (result is bool f && f == false) {
+			//	tok.ClearErrors();
+			//}
+			//return result;
+			//bool hasMember = ReflectionParseExtension.TryGetValueCompiledPath(scope, alreadyCompiledPath, out result);
+			SyntaxTree st;
+			while (operand.IsSyntax) {
+				st = operand.GetAsSyntaxNode();
+				if (st.IsEnclosure) {
+					operand = st.tokens[1];
+					if (operand.IsContextBeginningOrEnding()) {
+						tok.AddError(operand, "found empty expression while looking for member");
+						return false;
+					}
+				} else { break; }
 			}
-			return result;
+			st = operand.GetAsSyntaxNode();
+			if (st != null && st.IsMembershipOperation) {
+				List<string> memberPath = st.ConvertMembershipOperationToMemberSequence();
+				//UnityEngine.Debug.Log(memberPath.JoinToString());
+				for(int i = 0; i < memberPath.Count; ++i) {
+					if (scope == null) {
+						//string errorMessage = "can't look for " + memberPath[i] + " in null object";
+						//UnityEngine.Debug.Log(errorMessage);
+						return false;
+					}
+					bool memberExistsSoFar = op_SearchForMember(memberPath[i], out object member, out Type memberType, scope);
+					if (!memberExistsSoFar) {
+						//string errorMessage = "missing member " + memberPath[i]+ " in "+scope;
+						//UnityEngine.Debug.Log(errorMessage);
+						return false;
+					}
+					scope = member;
+				}
+				UnityEngine.Debug.Log("got im! "+scope+"."+ memberPath.JoinToString());
+				return true;
+			}
+			bool hasMember = op_SearchForMember(operand, out object value, out Type type, scope);
+			//string name = "";
+			//if (scope is UnityEngine.Object o) {
+			//	name = o.name;
+			//}
+			//UnityEngine.Debug.Log("maybe "+name+"("+scope+")."+ operand + " : "+hasMember);
+			return hasMember;
 		}
 		public static object op_not(ITokenErrLog tok, SyntaxTree syntax, object scope, ResolvedEnoughDelegate isItResolvedEnough) {
 			if (isItResolvedEnough != null && isItResolvedEnough.Invoke(syntax)) { return syntax; }

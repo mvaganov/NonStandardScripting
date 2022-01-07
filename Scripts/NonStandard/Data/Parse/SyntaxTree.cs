@@ -155,6 +155,24 @@ namespace NonStandard.Data.Parse {
 		public bool IsTextLiteral { get { return rules == CodeRules.String || rules == CodeRules.Char; } }
 		public bool IsEnclosure { get { return rules == CodeRules.Expression || rules == CodeRules.CodeBody || rules == CodeRules.SquareBrace; } }
 		public bool IsComment { get { return rules == CodeRules.CommentLine || rules == CodeRules.XmlCommentLine || rules == CodeRules.CommentBlock; } }
+		public bool IsMembershipOperation { get { return rules == CodeRules.MembershipOperator; } }
+		public List<string> ConvertMembershipOperationToMemberSequence() {
+			if (!IsMembershipOperation) return null;
+			List<string> sequence = new List<string>();
+			if (tokens[0].IsSyntax) {
+				SyntaxTree st = tokens[0].GetAsSyntaxNode();
+				sequence.AddRange(st.ConvertMembershipOperationToMemberSequence());
+			} else {
+				sequence.Add(tokens[0].ToString());
+			}
+			if (tokens[2].IsSyntax) {
+				SyntaxTree st = tokens[2].GetAsSyntaxNode();
+				sequence.AddRange(st.ConvertMembershipOperationToMemberSequence());
+			} else {
+				sequence.Add(tokens[2].ToString());
+			}
+			return sequence;
+		}
 		public Token GetBeginToken() { return tokens[tokenStart]; }
 		public Token GetEndToken() { return tokens[tokenStart + tokenCount - 1]; }
 		public int GetIndexBegin() { return GetBeginToken().GetBeginIndex(); }

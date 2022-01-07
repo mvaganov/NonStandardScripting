@@ -166,7 +166,7 @@ namespace NonStandard.Extension {
 		public static bool TryGetValueCompiledPath(object scope, IList<object> alreadyCompiledPath, out object result) {
 			object cursor = scope;
 			for(int i = 0; i < alreadyCompiledPath.Count; ++i) {
-				if(!TryGetValueCompiled(cursor, alreadyCompiledPath[i], out cursor)) {
+				if(cursor == null || !TryGetValueCompiled(cursor, alreadyCompiledPath[i], out cursor)) {
 					result = null;
 					return false;
 				}

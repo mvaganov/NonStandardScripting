@@ -674,7 +674,7 @@ namespace NonStandard.Data.Parse {
 					}
 					scope = member;
 				}
-				UnityEngine.Debug.Log("got im! "+scope+"."+ memberPath.JoinToString());
+				//UnityEngine.Debug.Log("got im! "+scope+"."+ memberPath.JoinToString());
 				return true;
 			}
 			bool hasMember = op_SearchForMember(operand, out object value, out Type type, scope);

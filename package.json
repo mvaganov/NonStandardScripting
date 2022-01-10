@@ -1,9 +1,9 @@
 {
   "name": "com.codegiraffe.nonstandard.scripting",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "displayName": "NonStandard Scripting",
   "description": "* Adds .Stringify() method to objects, which uses C# reflection to output a JSON-like representation.\n* Adds CodeConvert, which can TryParse JSON-like string representations into runtime C# objects.",
-  "unity": "2017.1",
+  "unity": "2019.4",
   "keywords": [
     "library",
     "utility",

@@ -111,7 +111,7 @@ namespace NonStandard.Data {
 		/// <returns></returns>
 		public static bool TryParseType(Type type, string text, ref object data, object scope, Tokenizer tokenizer = null, ParseRuleSet parsingRules = null) {
 			// object data wrapped by curly braces happens often enough that this is worth it for convenience.
-			if (type.IsClass && text.StartsWith("{") && text.EndsWith("}")) {
+			if (type.IsClass && text != null && text.StartsWith("{") && text.EndsWith("}")) {
 				text = text.Substring(1, text.Length - 2);
 			}
 			if (text == null || text.Trim().Length == 0) return false;

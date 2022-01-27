@@ -61,6 +61,7 @@ namespace NonStandard.Data.Parse {
 		/// <param name="i"></param>
 		/// <returns>raw token data</returns>
 		public Token GetToken(int i) { return tokens[i]; }
+		public string GetString() => str;
 		public IList<Token> Tokens => tokens;
 		/// <summary>
 		/// the method you're looking for if the tokens are doing something fancy, like resolving to objects

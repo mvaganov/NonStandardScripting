@@ -12,9 +12,11 @@ namespace NonStandard.Extension {
 			for (int i = list.Count-1; i >= 0; --i) { if (list[i].CompareTo(value) == 0) return i; }
 			return -1;
 		}
-		public static int BinarySearchIndexOf<T>(this IList<T> list, T value, IComparer<T> comparer = null) {
+		public static int BinarySearchIndexOf<T>(this IList<T> list, T value) where T : IComparable<T> {
+			return BinarySearchIndexOf(list, value, Comparer<T>.Default);
+		}
+		public static int BinarySearchIndexOf<T>(this IList<T> list, T value, IComparer<T> comparer) {
 			if (list == null) { throw new ArgumentNullException("list"); }
-			if (comparer == null) { comparer = Comparer<T>.Default; }
 			return list.BinarySearchIndexOf(value, comparer.Compare);
 		}
 		public static int BinarySearchIndexOf<T>(this IList<T> list, T value, Func<T, T, int> comparer) {
@@ -27,6 +29,12 @@ namespace NonStandard.Extension {
 				else lower = middle + 1;
 			}
 			return ~lower;
+		}
+		public static int BinarySearchInsert<T>(this IList<T> list, T value) where T : IComparable<T> {
+			return BinarySearchInsert(list, value, Comparer<T>.Default);
+		}
+		public static int BinarySearchInsert<T>(this IList<T> list, T value, IComparer<T> comparer) {
+			return BinarySearchInsert(list, value, comparer.Compare);
 		}
 		public static int BinarySearchInsert<T>(this IList<T> list, T value, Func<T, T, int> comparer) {
 			if (list == null) { throw new ArgumentNullException("list"); }

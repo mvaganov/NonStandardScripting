@@ -4,21 +4,40 @@ using System.Text;
 
 namespace NonStandard.Extension {
 	public static class IListExtension {
+		/// <param name="list">an unsorted list</param>
 		public static int IndexOf<T>(this IList<T> list, T value) where T : IComparable {
 			for(int i = 0; i < list.Count; ++i) { if (list[i].CompareTo(value) == 0) return i; }
 			return -1;
 		}
+		/// <param name="list">an unsorted list</param>
 		public static int IndexOfLast<T>(this IList<T> list, T value) where T : IComparable {
 			for (int i = list.Count-1; i >= 0; --i) { if (list[i].CompareTo(value) == 0) return i; }
 			return -1;
 		}
+		/// <summary>
+		/// returns the index of where the given value was found, or the 1's compliment of where it should be
+		/// </summary>
+		/// <param name="list">a sorted list</param>
+		/// <returns>index where the given value was found, or the 1's compliment of where it should be</returns>
 		public static int BinarySearchIndexOf<T>(this IList<T> list, T value) where T : IComparable<T> {
 			return BinarySearchIndexOf(list, value, Comparer<T>.Default);
 		}
+		/// <summary>
+		/// returns the index of where the given value was found, or the 1's compliment of where it should be
+		/// </summary>
+		/// <param name="list">a sorted list</param>
+		/// <param name="comparer">uses the comparer.Compare function</param>
+		/// <returns>index where the given value was found, or the 1's compliment of where it should be</returns>
 		public static int BinarySearchIndexOf<T>(this IList<T> list, T value, IComparer<T> comparer) {
 			if (list == null) { throw new ArgumentNullException("list"); }
 			return list.BinarySearchIndexOf(value, comparer.Compare);
 		}
+		/// <summary>
+		/// returns the index of where the given value was found, or the 1's compliment of where it should be
+		/// </summary>
+		/// <param name="list">a sorted list</param>
+		/// <param name="comparer">potentially custom implementation of <code>int CompareTo(T,T)</code></param>
+		/// <returns>index where the given value was found, or the 1's compliment of where it should be</returns>
 		public static int BinarySearchIndexOf<T>(this IList<T> list, T value, Func<T, T, int> comparer) {
 			if (list == null) { throw new ArgumentNullException("list"); }
 			int lower = 0, upper = list.Count - 1;
@@ -30,12 +49,29 @@ namespace NonStandard.Extension {
 			}
 			return ~lower;
 		}
+		/// <summary>
+		/// inserts the given value into it's proper position in a sorted list
+		/// </summary>
+		/// <param name="list">a sorted list</param>
+		/// <returns>index where the given value was inserted</returns>
 		public static int BinarySearchInsert<T>(this IList<T> list, T value) where T : IComparable<T> {
 			return BinarySearchInsert(list, value, Comparer<T>.Default);
 		}
+		/// <summary>
+		/// inserts the given value into it's proper position in a sorted list
+		/// </summary>
+		/// <param name="list">a sorted list</param>
+		/// <param name="comparer">uses the comparer.Compare function</param>
+		/// <returns>index where the given value was inserted</returns>
 		public static int BinarySearchInsert<T>(this IList<T> list, T value, IComparer<T> comparer) {
 			return BinarySearchInsert(list, value, comparer.Compare);
 		}
+		/// <summary>
+		/// inserts the given value into it's proper position in a sorted list
+		/// </summary>
+		/// <param name="list">a sorted list</param>
+		/// <param name="comparer">potentially custom implementation of <code>int CompareTo(T,T)</code></param>
+		/// <returns>index where the given value was inserted</returns>
 		public static int BinarySearchInsert<T>(this IList<T> list, T value, Func<T, T, int> comparer) {
 			if (list == null) { throw new ArgumentNullException("list"); }
 			int result = BinarySearchIndexOf(list, value, comparer);
@@ -44,6 +80,9 @@ namespace NonStandard.Extension {
 			list.Insert(index, value);
 			return result;
 		}
+		/// <summary>
+		/// goes through the given list to check if it is sorted
+		/// </summary>
 		public static bool IsSorted<T>(this IList<T> list, IComparer<T> comparer = null) {
 			if (list == null) { throw new ArgumentNullException("list"); }
 			if (comparer == null) { comparer = Comparer<T>.Default; }
@@ -97,6 +136,9 @@ namespace NonStandard.Extension {
 			float sum = 0; for (int i = 0; i < list.Count; ++i) { sum += valueFunction(list[i]); }
 			return sum;
 		}
+		/// <summary>
+		/// given a 2D jagged array, find the nth index, and return it's coordinate as [row,col]
+		/// </summary>
 		public static int[] GetNestedIndex<T>(this IList<IList<T>> list, int flatIndex) {
 			int[] path = new int[2] { -1, -1 };
 			int original = flatIndex;

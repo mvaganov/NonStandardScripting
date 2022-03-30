@@ -122,7 +122,7 @@ namespace NonStandard.Data.Parse {
 		}
 		public string FilePositionOf(Token token) {
 			List<SyntaxTree> traversed = new List<SyntaxTree>();
-			while (!token.IsValid) {
+			while (!token.IsValidText) {
 				SyntaxTree e = token.GetAsSyntaxNode();
 				if (e == null || traversed.IndexOf(e) >= 0) return "???";
 				traversed.Add(e);
@@ -205,7 +205,7 @@ namespace NonStandard.Data.Parse {
 							if (separator != null && i > 0) { sb.Append(separator); }
 							sb.Append(")").Append(e.endDelim.ToString().Stringify(showBoundary: false)).Append(")");
 						}
-						else { sb.Append(" ").Append(e.sourceMeta).Append(" "); }
+						else { sb.Append(" ").Append(e.sourceMeta).Append(e.sourceMeta.GetType()).Append(" "); }
 					}
 				} else {
 					if (separator != null && i > 0) { sb.Append(separator); }
@@ -348,8 +348,8 @@ namespace NonStandard.Data.Parse {
 				if (e != null) {
 					for (int i = 0; i < e.tokens.Count; ++i) {
 						Token token = e.tokens[i];
-						int inTheList = token.IsValid ? travelLog.FindIndex(t=>t==token) : -1;
-						if (inTheList >= 0 && inTheList < index && travelLog[inTheList].IsValid) {
+						int inTheList = token.IsValidText ? travelLog.FindIndex(t=>t==token) : -1;
+						if (inTheList >= 0 && inTheList < index && travelLog[inTheList].IsValidText) {
 							throw new Exception("recursion! " + token.index + " " + token);
 						}
 						if (inTheList < 0 && token.GetAsSyntaxNode() != e) {
@@ -366,9 +366,8 @@ namespace NonStandard.Data.Parse {
 				int comp;
 				comp = b.path.Length.CompareTo(a.path.Length);
 				if (comp != 0) { return comp; }
-				//Context.Entry e = null;
-				Token ta = a.token;//GetTokenAt(tokens, a, ref e);
-				Token tb = b.token;//GetTokenAt(tokens, b, ref e);
+				Token ta = a.token;
+				Token tb = b.token;
 				DelimOp da = ta.meta as DelimOp;
 				DelimOp db = tb.meta as DelimOp;
 				comp = da.order.CompareTo(db.order);
@@ -387,7 +386,9 @@ namespace NonStandard.Data.Parse {
 					Token t = GetTokenAt(tokens, paths[i].path, ref pathNode);
 					if (t == Token.None) {
 						t = pathNode?.GetBeginToken() ?? this.tokens[0];
-						AddError(t, "can't resolve "+t.GetAsSmallText()+", missing token");
+						AddError(t, "can't resolve operation \'"+t.GetAsSmallText()+"\', missing token");
+						UnityEngine.Debug.Log("!!");
+						//continue;
 						return;
 					}
 					if (paths[i].token.index != t.index) {
@@ -428,10 +429,21 @@ namespace NonStandard.Data.Parse {
 			lastPathNode = t.GetAsSyntaxNode();
 			return GetTokenAt(lastPathNode.tokens, index, ref lastPathNode);
 		}
+		/// <summary>
+		/// where a token exists in it's <see cref="SyntaxTree"/>, including the path of branches by index, and local root.
+		/// </summary>
 		struct TokenPath {
-			public int[] path; public Token token; public SyntaxTree pathNode;
+			public Token token;
+			public int[] path;
+			public SyntaxTree localRoot;
 		}
-		List<TokenPath> FindTokenPaths(Func<Token, bool> predicate, bool justOne = false) {
+		/// <summary>
+		/// generates metadata for a <see cref="SyntaxTree"/> that allows it's operations to be executed in the proper order of operations
+		/// </summary>
+		/// <param name="predicate"></param>
+		/// <param name="justOne"></param>
+		/// <returns></returns>
+		private List<TokenPath> FindTokenPaths(Func<Token, bool> predicate, bool justOne = false) {
 			if (tokens.Count == 0) return new List<TokenPath>();
 			List<List<Token>> path = new List<List<Token>>();
 			List<int> position = new List<int>();
@@ -443,7 +455,7 @@ namespace NonStandard.Data.Parse {
 				List<Token> currentTokens = path[path.Count - 1];
 				int currentIndex = position[position.Count - 1];
 				Token token = currentTokens[currentIndex];
-				if (predicate(token)) { paths.Add(new TokenPath { path = position.ToArray(), token = token, pathNode = e }); }
+				if (predicate(token)) { paths.Add(new TokenPath { path = position.ToArray(), token = token, localRoot = e }); }
 				e = token.GetAsSyntaxNode();
 				bool incremented = false;
 				if(e != null) {

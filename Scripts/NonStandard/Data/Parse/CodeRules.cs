@@ -388,7 +388,7 @@ namespace NonStandard.Data.Parse {
 		public static void op_BinaryArgs(ITokenErrLog tok, SyntaxTree syntax, object scope, out object left, out object right, out Type lType, out Type rType) {
 			SingleArgPreferDouble(tok, syntax.tokens[0], scope, out left, out lType, null);
 			bool missingRightArgument = false;
-			if (syntax.TokenCount >= 3 && syntax.Length > 3) {
+			if (syntax.TokenCount >= 3) {
 				Token r = syntax.tokens[2];
 				if (r.IsContextEnding()) { missingRightArgument = true; } // prevent a right-parenthesis from being read as a valid token
 			} else {
@@ -456,10 +456,20 @@ namespace NonStandard.Data.Parse {
 			tok.AddError(syntax.tokens[1], "unable to multiply " + lType + " and " + rType);
 			return syntax;
 		}
+
 		public static object op_add(ITokenErrLog tok, SyntaxTree syntax, object scope, ResolvedEnoughDelegate isItResolvedEnough) {
 			if (isItResolvedEnough != null && isItResolvedEnough.Invoke(syntax)) { return syntax; }
 			object left, right; Type lType, rType;
 			op_BinaryArgs(tok, syntax, scope, out left, out right, out lType, out rType);
+			//if (lType == null) {
+			//	UnityEngine.Debug.Log("l " + syntax.tokens[0] + " is unknown type");
+			//	SingleArgPreferDouble(tok, syntax.tokens[0], scope, out left, out lType, null);
+			//}
+			//if (rType == null) {
+			//	UnityEngine.Debug.Log("r "+ syntax.tokens[2] + " is unknown type");
+			//	op_BinaryArgs(tok, syntax, scope, out left, out right, out lType, out rType);
+			//	SingleArgPreferDouble(tok, syntax.tokens[2], scope, out right, out rType, null);
+			//}
 			if (lType == typeof(string) || rType == typeof(string)) { return left.ToString() + right.ToString(); }
 			if (CodeConvert.IsConvertable(lType) && CodeConvert.IsConvertable(rType)) {
 				CodeConvert.TryConvert(ref left, typeof(double));

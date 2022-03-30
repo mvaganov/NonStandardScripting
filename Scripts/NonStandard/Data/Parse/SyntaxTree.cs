@@ -48,7 +48,7 @@ namespace NonStandard.Data.Parse {
 			for (int i = 0; i < tokens.Count; ++i) {
 				Token t = tokens[i];
 				SyntaxTree e = t.GetAsSyntaxNode();
-				if (e != null && !t.IsValid) {
+				if (e != null && !t.IsValidText) {
 					PrintAll(e.tokens, sb, stack);
 				} else {
 					sb.Append(t);

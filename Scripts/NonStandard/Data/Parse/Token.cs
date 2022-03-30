@@ -4,6 +4,9 @@ using System.Collections.Generic;
 using System.Text;
 
 namespace NonStandard.Data.Parse {
+	/// <summary>
+	/// A <see cref="Token"/> is a piece of text from a larger text corpus. Meta-data may be associated with this text.
+	/// </summary>
 	public struct Token : IEquatable<Token>, IComparable<Token> {
 		public int index, length; // 32 bits x2
 		/// <summary>
@@ -14,26 +17,30 @@ namespace NonStandard.Data.Parse {
 		/// <see cref="TokenSubstitution"/> - means this token should have it's value semantically replaced by <see cref="TokenSubstitution.value"/>, even though it is literally a sequence of characters. used when resolving alphanumeric tokens into numbers, enums, or constants
 		/// </summary>
 		public object meta; // 64 bits
+
 		public Token(object meta, int i, int len) { this.meta = meta; index = i; length = len; }
 		public Token(string text) { this.meta = text; index = 0; length = text.Length; }
 		private static Token _None = new Token(null, -1, -1);
+		private static Token _Ignore = new Token(null, -1, -2);
 		public static Token None => _None;
+		public static Token Ignore => _None;
 		/// <summary>
 		/// a token can be valid without meta data, as a simple marker. but if it has invalid marks, and no data, it's bad.
 		/// </summary>
-		public bool IsValid { get { return index >= 0 && length >= 0; } }
-		public bool IsSyntax => meta != null && meta.GetType() == typeof(SyntaxTree);
+		public bool IsValidText { get { return index >= 0 && length >= 0; } }
+		public bool IsSyntax => meta is SyntaxTree;
+		public bool IsDelim => meta is Delim;
+		public bool IsSubstitution => meta is TokenSubstitution;
 		public bool IsSyntaxBoundary {
 			get {
 				/// <see cref="SyntaxTree"> boundaries, like "(" and ")" or "\"" or "{" and "}" have a valid index and length
-				if (!IsValid) return false;
+				if (!IsValidText) return false;
 				/// and point at a <see cref="SyntaxTree"/> instead of at a string or <see cref="Delim"/> or <see cref="TokenSubstitution"/>
 				return IsSyntax;// meta != null && meta.GetType() == typeof(SyntaxTree);
 			}
 		}
 		public bool IsSimpleString { get { return index >= 0 && length >= 0 && 
 					(meta is string || meta is SyntaxTree syntax && syntax.TextRaw != null); } }
-		public bool IsDelim { get { return meta is Delim; } }
 		public int GetBeginIndex() { return index; }
 		public int GetEndIndex() { return index + length; }
 		public string ToString(string s) { return s.Substring(index, length); }
@@ -45,7 +52,7 @@ namespace NonStandard.Data.Parse {
 			if (syntax == null) { return Resolve(null, null).ToString(); }
 			Delim d = syntax.sourceMeta as Delim;
 			if(d != null) { return d.ToString(); }
-			if(IsValid) return ToString(syntax.TextRaw);
+			if(IsValidText) return ToString(syntax.TextRaw);
 			string output = syntax.rules.name;
 			if (syntax.IsTextLiteral) {
 				output += "(" + syntax.GetText() + ")";
@@ -78,8 +85,7 @@ namespace NonStandard.Data.Parse {
 		public void FlattenInto(List<Token> tokens) {
 			if (tokens.Contains(this)) { return; }
 			tokens.Add(this);
-			SyntaxTree syntax = meta as SyntaxTree;
-			if(syntax != null) {
+			if (meta is SyntaxTree syntax) {
 				for(int i = 0; i < syntax.TokenCount; ++i) {
 					Token t = syntax.GetToken(i);
 					// binary operators insert a copy of themselves (but not themselves exactly) as the middle of 3 tokens

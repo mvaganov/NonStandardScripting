@@ -1,4 +1,5 @@
-﻿using NonStandard.Extension;
+﻿// code by michael vaganov, released to the public domain via the unlicense (https://unlicense.org/)
+using NonStandard.Extension;
 using System;
 using System.Collections.Generic;
 using System.Text;

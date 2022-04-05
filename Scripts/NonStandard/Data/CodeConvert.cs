@@ -1,4 +1,5 @@
-﻿using NonStandard.Data.Parse;
+﻿// code by michael vaganov, released to the public domain via the unlicense (https://unlicense.org/)
+using NonStandard.Data.Parse;
 using NonStandard.Extension;
 using System;
 using System.Collections;

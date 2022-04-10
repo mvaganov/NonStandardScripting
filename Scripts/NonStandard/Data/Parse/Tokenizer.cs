@@ -387,7 +387,7 @@ namespace NonStandard.Data.Parse {
 					if (t == Token.None) {
 						t = pathNode?.GetBeginToken() ?? this.tokens[0];
 						AddError(t, "can't resolve operation \'"+t.GetAsSmallText()+"\', missing token");
-						UnityEngine.Debug.Log("!!");
+						//UnityEngine.Debug.Log("!!");
 						//continue;
 						return;
 					}

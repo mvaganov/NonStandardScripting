@@ -83,7 +83,7 @@ namespace NonStandard.Extension {
 
 		public static IList<string> GetStackFullPath(int stackDepth = 1, int stackStart = 1) {
 			StackTrace stackTrace = new StackTrace(stackStart + 1, true);
-			int len = Math.Min(stackDepth, stackTrace.FrameCount);
+			int len = stackDepth == -1 ? stackTrace.FrameCount : Math.Min(stackDepth, stackTrace.FrameCount);
 			List<string> stack = new List<string>();
 			for (int i = 0; i < len; ++i) {
 				StackFrame f = stackTrace.GetFrame(i);

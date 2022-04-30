@@ -90,12 +90,12 @@ namespace NonStandard.Data.Parse {
 			}
 		}
 		public string GetText() { return Unescape(); }
-		public object Resolve(ITokenErrLog tok, object scope, ResolvedEnoughDelegate isItResolvedEnough = null) {
+		public object Resolve(ITokenErrLog err, object scope, ResolvedEnoughDelegate isItResolvedEnough = null) {
 			DelimOp op = sourceMeta as DelimOp;
 			if (op != null) {
-				return op.resolve.Invoke(tok, this, scope, isItResolvedEnough);
+				return op.resolve.Invoke(err, this, scope, isItResolvedEnough);
 			}
-			List<object> finalTerms = ResolveTerms(tok, scope, tokens, isItResolvedEnough);
+			List<object> finalTerms = ResolveTerms(err, scope, tokens, isItResolvedEnough);
 			object result = finalTerms;
 			if (rules != null && rules.Simplify != null) {
 				if (isItResolvedEnough != null && isItResolvedEnough.Invoke(result)) { return result; }
@@ -103,17 +103,17 @@ namespace NonStandard.Data.Parse {
 			}
 			return result;
 		}
-		public static List<object> ResolveTerms(ITokenErrLog tok, object scope, List<Token> tokens, ResolvedEnoughDelegate isItResolvedEnough = null) {
+		public static List<object> ResolveTerms(ITokenErrLog err, object scope, List<Token> tokens, ResolvedEnoughDelegate isItResolvedEnough = null) {
 			List<object> results = new List<object>();
-			ResolveTerms(tok, scope, tokens, 0, tokens.Count, results, isItResolvedEnough);
+			ResolveTerms(err, scope, tokens, 0, tokens.Count, results, isItResolvedEnough);
 			return results;
 		}
-		public static void ResolveTerms(ITokenErrLog tok, object scope, List<Token> tokens, int start, int length, List<object> results, ResolvedEnoughDelegate isItResolvedEnough = null) {
+		public static void ResolveTerms(ITokenErrLog err, object scope, List<Token> tokens, int start, int length, List<object> results, ResolvedEnoughDelegate isItResolvedEnough = null) {
 			List<int> found = new List<int>();
 			FindTerms(tokens, start, length, found);
 			for (int i = 0; i < found.Count; ++i) {
 				Token t = tokens[found[i]];
-				object result = t.Resolve(tok, scope, isItResolvedEnough);
+				object result = t.Resolve(err, scope, isItResolvedEnough);
 				results.Add(result);
 				// if this token is probably a method call, or there are arguments immediately after this token (so maybe a method call)
 				Invocation mc = result as Invocation;
@@ -121,7 +121,7 @@ namespace NonStandard.Data.Parse {
 					object target = mc != null ? mc.target : scope;
 					object methodName = mc != null ? mc.methodName : result;
 					Token methodArgs = tokens[found[i + 1]];
-					if (Invocation.TryExecuteFunction(target, methodName, methodArgs, out result, tok, isItResolvedEnough)) {
+					if (Invocation.TryExecuteFunction(target, methodName, methodArgs, out result, err, isItResolvedEnough)) {
 						++i;
 						results[results.Count - 1] = result;
 					}

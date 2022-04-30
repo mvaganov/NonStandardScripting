@@ -1,4 +1,5 @@
-﻿using NonStandard.Extension;
+﻿// code by michael vaganov, released to the public domain via the unlicense (https://unlicense.org/)
+using NonStandard.Extension;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -27,23 +28,23 @@ namespace NonStandard.Data.Parse {
 			return null;
 		}
 
-		private static bool TryExecuteFunction(object scope, string funcName, Token argsToken, out object result, ITokenErrLog tok, ResolvedEnoughDelegate isItResolvedEnough) {
+		private static bool TryExecuteFunction(object scope, string funcName, Token argsToken, out object result, ITokenErrLog err, ResolvedEnoughDelegate isItResolvedEnough) {
 			result = null;
-			if (!DeterminePossibleMethods(scope, funcName, out List<MethodInfo> possibleMethods, tok, argsToken)) { return false; }
-			List<object> args = ResolveFunctionArgumentList(argsToken, scope, tok, isItResolvedEnough);
-			if (!DetermineValidMethods(funcName, argsToken, possibleMethods, out List<ParameterInfo[]> validParams, args, tok)) { return false; }
-			if (!DetermineMethod(args, possibleMethods, validParams, out MethodInfo mi, out object[] finalArgs, tok, argsToken)) { return false; }
-			return ExecuteMethod(scope, mi, finalArgs, out result, tok, argsToken);
+			if (!DeterminePossibleMethods(scope, funcName, out List<MethodInfo> possibleMethods, err, argsToken)) { return false; }
+			List<object> args = ResolveFunctionArgumentList(argsToken, scope, err, isItResolvedEnough);
+			if (!DetermineValidMethods(funcName, argsToken, possibleMethods, out List<ParameterInfo[]> validParams, args, err)) { return false; }
+			if (!DetermineMethod(args, possibleMethods, validParams, out MethodInfo mi, out object[] finalArgs, err, argsToken)) { return false; }
+			return ExecuteMethod(scope, mi, finalArgs, out result, err, argsToken);
 		}
-		private static bool DeterminePossibleMethods(object scope, string funcName, out List<MethodInfo> possibleMethods, ITokenErrLog tok, Token argsToken) {
+		private static bool DeterminePossibleMethods(object scope, string funcName, out List<MethodInfo> possibleMethods, ITokenErrLog tok, Token token) {
 			if (scope == null) {
-				tok.AddError(argsToken, $"can't execute function \'{funcName}\' without scope");
+				tok.AddError(token, $"can't execute function \'{funcName}\' without scope");
 				possibleMethods = null;
 				return false;
 			}
 			possibleMethods = scope.GetType().GetMethods().FindAll(m => m.Name == funcName);
 			if (possibleMethods.Count == 0) {
-				tok.AddError(argsToken, $"missing function \'{funcName}\' in {scope.GetType()}");
+				tok.AddError(token, $"missing function \'{funcName}\' in {scope.GetType()}");
 				return false;
 			}
 			return true;

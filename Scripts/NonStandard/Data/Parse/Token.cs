@@ -95,7 +95,7 @@ namespace NonStandard.Data.Parse {
 				}
 			}
 		}
-		public object Resolve(ITokenErrLog tok, object scope, ResolvedEnoughDelegate isItResolvedEnough = null) {
+		public object Resolve(ITokenErrLog err, object scope, ResolvedEnoughDelegate isItResolvedEnough = null) {
 			if (isItResolvedEnough != null && isItResolvedEnough(this)) return this;
 			if (index == -1 && length == -1) return meta;
 			if (meta == null) throw new NullReferenceException("can't resolve NULL token");
@@ -113,7 +113,7 @@ namespace NonStandard.Data.Parse {
 			}
 			case TokenSubstitution ss: return ss.value;
 			case Delim d: return d.text;
-			case SyntaxTree pce: return pce.Resolve(tok, scope, isItResolvedEnough);
+			case SyntaxTree pce: return pce.Resolve(err, scope, isItResolvedEnough);
 			}
 			throw new DecoderFallbackException();
 		}

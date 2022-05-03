@@ -34,6 +34,8 @@ namespace NonStandard.Data.Parse {
 			List<object> args = ResolveFunctionArgumentList(argsToken, scope, err, isItResolvedEnough);
 			if (!DetermineValidMethods(funcName, argsToken, possibleMethods, out List<ParameterInfo[]> validParams, args, err)) { return false; }
 			if (!DetermineMethod(args, possibleMethods, validParams, out MethodInfo mi, out object[] finalArgs, err, argsToken)) { return false; }
+			//UnityEngine.Debug.Log("given args: " + args.JoinToString(", ", o => o == null ? "null" : o.GetType().FullName) + "]");
+			//UnityEngine.Debug.Log("final args: [" + finalArgs.JoinToString(", ", o => o == null? "null":o.GetType().FullName) + "]");
 			return ExecuteMethod(scope, mi, finalArgs, out result, err, argsToken);
 		}
 		private static bool DeterminePossibleMethods(object scope, string funcName, out List<MethodInfo> possibleMethods, ITokenErrLog tok, Token token) {
@@ -93,7 +95,8 @@ namespace NonStandard.Data.Parse {
 				if ((a = TryConvertArgs(args, finalArgs, pi, tok, argsToken)) != args.Count
 				// it's only a problem if there are no other options
 				&& paramSet == validParams.Count - 1) {
-					tok.AddError(argsToken, $"can't convert \'{args[a]}\' to {pi[a].ParameterType} for {possibleMethods[paramSet].Name}{argsToken.Stringify()}");
+					tok.AddError(argsToken, $"can't convert \'{args[a]}\' to {pi[a].ParameterType} for {possibleMethods[paramSet].Name}{argsToken.Stringify()}." +
+						" Did you mean one of these: " + possibleMethods.JoinToString(", ", m => m.Name + "(" + m.GetParameters().Length + " arguments)"));
 				}
 				if (typesOk) {
 					mi = possibleMethods[paramSet];
@@ -105,14 +108,20 @@ namespace NonStandard.Data.Parse {
 		private static int TryConvertArgs(IList<object> args, IList<object> finalArgs, ParameterInfo[] pi, ITokenErrLog tok, Token argsToken) {
 			for (int i = 0; i < args.Count; ++i) {
 				try {
-					finalArgs[i] = Convert.ChangeType(args[i], pi[i].ParameterType);
+					if (pi[i].ParameterType != typeof(object)) {
+						finalArgs[i] = Convert.ChangeType(args[i], pi[i].ParameterType);
+					} else {
+						finalArgs[i] = args[i];
+					}
 				} catch (Exception) {
+					//UnityEngine.Debug.Log("could not convert "+args[i]+" to "+ pi[i].ParameterType);
 					return i;
 				}
 			}
 			return args.Count;
 		}
 		private static bool ExecuteMethod(object scope, MethodInfo mi, object[] finalArgs, out object result, ITokenErrLog tok, Token argsToken) {
+			//UnityEngine.Debug.Log("executing "+mi.Name+" ( "+finalArgs.Stringify()+" )");
 			try {
 				result = mi.Invoke(scope, finalArgs);
 			} catch (Exception e) {
@@ -123,5 +132,4 @@ namespace NonStandard.Data.Parse {
 			return true;
 		}
 	}
-
 }

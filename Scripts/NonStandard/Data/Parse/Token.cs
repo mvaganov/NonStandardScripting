@@ -100,20 +100,27 @@ namespace NonStandard.Data.Parse {
 			if (index == -1 && length == -1) return meta;
 			if (meta == null) throw new NullReferenceException("can't resolve NULL token");
 			switch (meta) {
-			case string s: {
-				string str = ToString(s);
-				//Show.Log("@@@  "+str+" "+scope);
-				if (scope != null && (isItResolvedEnough == null || isItResolvedEnough.Invoke(str))) {
-					if (CodeRules.op_SearchForMember(str, out object value, out Type type, scope)) {
-						//Show.Log(str+" "+foundIt+" "+value);
-						return value;
+				case string s: {
+						string str = ToString(s);
+						//Show.Log("@@@  "+str+" "+scope);
+						if (scope != null && (isItResolvedEnough == null || isItResolvedEnough.Invoke(str))) {
+							//UnityEngine.Debug.Log("SC000PE: [" + scope + "]");
+							if (CodeRules.op_SearchForMember(str, out object value, out Type type, scope)) {
+								//Show.Log(str+" "+foundIt+" "+value);
+								return value;
+							}
+						}
+						return str;
 					}
-				}
-				return str;
-			}
-			case TokenSubstitution ss: return ss.value;
-			case Delim d: return d.text;
-			case SyntaxTree pce: return pce.Resolve(err, scope, isItResolvedEnough);
+				case TokenSubstitution sub: {
+						if (sub.value == CodeRules._this) {
+							//UnityEngine.Debug.Log("resolvign this "+scope);
+							return scope;
+						}
+						return sub.value;
+					}
+				case Delim d: return d.text;
+				case SyntaxTree pce: return pce.Resolve(err, scope, isItResolvedEnough);
 			}
 			throw new DecoderFallbackException();
 		}

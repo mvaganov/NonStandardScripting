@@ -10,7 +10,7 @@ namespace NonStandard.Data.Parse {
 	public class CodeRules {
 
 		public static ParseRuleSet
-			String, Char, Number, Hexadecimal, Boolean, Expression, SquareBrace, GenericArgs, CodeBody,
+			String, Char, Number, Hexadecimal, Boolean, This, Expression, SquareBrace, GenericArgs, CodeBody,
 			CodeInString, Sum, Difference, Product, Quotient, Modulus, Power, LogicalAnd, LogicalOr,
 			Assignment, Equal, LessThan, GreaterThan, LessThanOrEqual, GreaterThanOrEqual, MembershipOperator,
 			IfStatement, MaybeModifier, NotModifier, NotEqual, XmlCommentLine, CommentLine, CommentBlock, Default, CommandLine;
@@ -92,6 +92,9 @@ namespace NonStandard.Data.Parse {
 			new DelimCtx("False",ctx:"bool",parseRule:(str,i)=>new ParseResult(5,false),breaking:false),
 			new DelimCtx("True",ctx:"bool",parseRule:(str,i)=>new ParseResult(4,true),breaking:false),
 		};
+		public static Delim[] _this = new Delim[] {
+			new DelimCtx("this",ctx:"this",parseRule:(str,i)=>{ return new ParseResult(4,_this); },breaking:false),
+		};
 		public static Delim[] _block_comment_delimiter = new Delim[] { new DelimCtx("/*", ctx: "/**/", start: true), new DelimCtx("*/", ctx: "/**/", end: true) };
 		public static Delim[] _line_comment_delimiter = new Delim[] { new DelimCtx("//", ctx: "//", start: true) };
 		public static Delim[] _XML_line_comment_delimiter = new Delim[] { new DelimCtx("///", ctx: "///", start: true) };
@@ -99,7 +102,7 @@ namespace NonStandard.Data.Parse {
 		public static Delim[] _erroneous_end_of_string = new Delim[] { new DelimCtx("\n", ctx: "string", end: true, printable: false), new DelimCtx("\r", ctx: "string", end: true, printable: false) };
 		public static Delim[] _end_of_XML_line_comment = new Delim[] { new DelimCtx("\n", ctx: "///", end: true, printable: false), new DelimCtx("\r", ctx: "///", end: true, printable: false) };
 		public static Delim[] _line_comment_continuation = new Delim[] { new Delim("\\", parseRule: CommentEscape) };
-		public static Delim[] _data_keyword = new Delim[] { "null", "true", "false", "bool", "int", "short", "string", "long", "byte",
+		public static Delim[] _data_keyword = new Delim[] { "null", "true", "false", "this", "bool", "int", "short", "string", "long", "byte",
 			"float", "double", "uint", "ushort", "sbyte", "char", "if", "else", "void", "var", "new", "as", };
 		public static Delim[] _data_c_sharp_keyword = new Delim[] {
 			"abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked", "class",
@@ -121,7 +124,9 @@ namespace NonStandard.Data.Parse {
 			_expression_delimiter, _code_body_delimiter, _square_brace_delimiter, _ternary_operator_delimiter,
 			_instruction_finished_delimiter, _list_item_delimiter, _membership_operator, _prefix_unary_operator,
 			_binary_operator, _binary_logic_operatpor, _assignment_operator, _lambda_operator, _math_operator,
-			_block_comment_delimiter, _line_comment_delimiter, _number, _boolean, _conditional_operator, _maybe_operator, _not_operator);
+			_block_comment_delimiter, _line_comment_delimiter, _number, _boolean, _conditional_operator, _maybe_operator, _not_operator
+			, _this
+			);
 		public static Delim[] CommandLineDelimiters = CombineDelims(_string_delimiter, _char_delimiter,
 			_expression_delimiter, _code_body_delimiter, _square_brace_delimiter,//_ternary_operator_delimiter,
 			_instruction_finished_delimiter, _list_item_delimiter, //_membership_operator, _prefix_unary_operator,
@@ -141,6 +146,7 @@ namespace NonStandard.Data.Parse {
 			Number = new ParseRuleSet("number");
 			Hexadecimal = new ParseRuleSet("0x");
 			Boolean = new ParseRuleSet("bool");
+			This = new ParseRuleSet("this");
 			Expression = new ParseRuleSet("()");
 			SquareBrace = new ParseRuleSet("[]");
 			GenericArgs = new ParseRuleSet("<>");
@@ -342,6 +348,7 @@ namespace NonStandard.Data.Parse {
 		public static bool op_SearchForMember(string name, out object value, out Type type, object scope) {
 			switch (name) { // TODO can this switch be removed because the tokens are in CodeRules?
 			case "null": value = null; type = null; return true;
+			case "this": UnityEngine.Debug.Log("           THIS! ["+scope+"]"); break;// value = scope; type = scope.GetType(); return true;
 			case "True": value = true; type = typeof(bool); return true;
 			case "False": value = false; type = typeof(bool); return true;
 			}

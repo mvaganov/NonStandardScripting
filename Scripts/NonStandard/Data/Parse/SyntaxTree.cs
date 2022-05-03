@@ -116,11 +116,13 @@ namespace NonStandard.Data.Parse {
 				object result = t.Resolve(err, scope, isItResolvedEnough);
 				results.Add(result);
 				// if this token is probably a method call, or there are arguments immediately after this token (so maybe a method call)
-				Invocation mc = result as Invocation;
-				if (mc != null || (i < found.Count - 1 && found[i + 1] == found[i] + 1)) {
-					object target = mc != null ? mc.target : scope;
-					object methodName = mc != null ? mc.methodName : result;
+				Invocation invok = result as Invocation;
+				//UnityEngine.Debug.Log("SCOPE: [" + scope + "]");
+				if (invok != null || (i < found.Count - 1 && found[i + 1] == found[i] + 1)) {
+					object target = invok != null && invok.target != null ? invok.target : scope;
+					object methodName = invok != null ? invok.methodName : result;
 					Token methodArgs = tokens[found[i + 1]];
+					//UnityEngine.Debug.Log("TARGET: [" + target + "]");
 					if (Invocation.TryExecuteFunction(target, methodName, methodArgs, out result, err, isItResolvedEnough)) {
 						++i;
 						results[results.Count - 1] = result;

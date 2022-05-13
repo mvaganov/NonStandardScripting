@@ -1,4 +1,5 @@
 ﻿// code by michael vaganov, released to the public domain via the unlicense (https://unlicense.org/)
+
 using NonStandard.Extension;
 using System;
 using System.Collections.Generic;
@@ -93,7 +94,7 @@ namespace NonStandard.Data.Parse {
 			new DelimCtx("True",ctx:"bool",parseRule:(str,i)=>new ParseResult(4,true),breaking:false),
 		};
 		public static Delim[] _this = new Delim[] {
-			new DelimCtx("this",ctx:"this",parseRule:(str,i)=>{ return new ParseResult(4,_this); },breaking:false),
+			new DelimCtx("this",ctx:"this",parseRule:(str,i)=>{ return new ParseResult(4, _this); },breaking:false),
 		};
 		public static Delim[] _block_comment_delimiter = new Delim[] { new DelimCtx("/*", ctx: "/**/", start: true), new DelimCtx("*/", ctx: "/**/", end: true) };
 		public static Delim[] _line_comment_delimiter = new Delim[] { new DelimCtx("//", ctx: "//", start: true) };

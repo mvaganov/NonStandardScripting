@@ -114,6 +114,12 @@ namespace NonStandard.Extension {
 			for (int i = 0; i < list.Count; ++i) { if (predicate(list[i])) { indexes.Add(i); } }
 			return indexes;
 		}
+		/// <param name="indexes">assumes indexes are in order</param>
+		public static void RemoveAtIndexes<T>(this IList<T> list, IList<int> indexes) {
+			for(int i = indexes.Count-1; i >= 0; --i) {
+				list.RemoveAt(i);
+			}
+		}
 		public static T Find<T>(this IList<T> list, Func<T, bool> predicate) {
 			for (int i = 0; i < list.Count; ++i) { if (predicate(list[i])) return list[i]; }
 			return default(T);

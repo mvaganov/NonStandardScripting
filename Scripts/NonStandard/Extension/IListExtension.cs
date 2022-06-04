@@ -114,10 +114,23 @@ namespace NonStandard.Extension {
 			for (int i = 0; i < list.Count; ++i) { if (predicate(list[i])) { indexes.Add(i); } }
 			return indexes;
 		}
-		/// <param name="indexes">assumes indexes are in order</param>
+		/// <param name="indexes">optimized assuming indexes in order. will sort if out of order</param>
 		public static void RemoveAtIndexes<T>(this IList<T> list, IList<int> indexes) {
-			for(int i = indexes.Count-1; i >= 0; --i) {
-				list.RemoveAt(i);
+			bool inOrder = true;
+			int i;
+			for(i = indexes.Count-1; i >= 0; --i) {
+				if (i < indexes.Count-2 && indexes[i] > indexes[i+1]) {
+					inOrder = false;
+					break;
+				}
+				list.RemoveAt(indexes[i]);
+			}
+			if (!inOrder) {
+				int[] orderedIndexes = indexes.SubList(0, i + 1);
+				Array.Sort(orderedIndexes);
+				for (i = orderedIndexes.Length; i >= 0; --i) {
+					list.RemoveAt(orderedIndexes[i]);
+				}
 			}
 		}
 		public static T Find<T>(this IList<T> list, Func<T, bool> predicate) {

@@ -32,6 +32,17 @@ namespace NonStandard.Data.Parse {
 		public bool IsSyntax => meta is SyntaxTree;
 		public bool IsDelim => meta is Delim;
 		public bool IsSubstitution => meta is TokenSubstitution;
+		public string MetaType {
+			get {
+				switch (meta) {
+					case string s: return "text:";
+					case SyntaxTree st: return "syntax:" + st.rules.name;
+					case Delim del: return "delim:" + del.name;
+					case TokenSubstitution ts: return "subst:";
+				}
+				return meta != null ? meta.ToString() : "<null>";
+			}
+		}
 		public bool IsSyntaxBoundary {
 			get {
 				/// <see cref="SyntaxTree"> boundaries, like "(" and ")" or "\"" or "{" and "}" have a valid index and length

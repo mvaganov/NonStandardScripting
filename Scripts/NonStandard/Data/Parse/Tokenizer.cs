@@ -341,18 +341,50 @@ namespace NonStandard.Data.Parse {
 #endif
 		}
 
-		protected void BreadthFirstSearch(List<Token> travelLog, ref int index) {
+		public enum TokenInclusionRule {
+			None,
+			IgnoreThisAndIgnoreChildren,
+			IgnoreThisAndIncludeChildren,
+			IncludeThisAndIgnoreChildren
+		}
+
+		public void GetAllTokens(List<Token> out_tokens, Dictionary<string,TokenInclusionRule> tokenRules = null) {
+			int index = 0;
+			out_tokens.AddRange(tokens);
+			BreadthFirstSearch(out_tokens, ref index, tokenRules);
+		}
+
+		public void GetStandardTokens(List<Token> out_tokens) { GetAllTokens(out_tokens, _defaultTokenInclusionRules); }
+
+		private static Dictionary<string, TokenInclusionRule> _defaultTokenInclusionRules = new Dictionary<string, TokenInclusionRule>() {
+			["syntax:string"] = TokenInclusionRule.IncludeThisAndIgnoreChildren,
+			["syntax://"] = TokenInclusionRule.IncludeThisAndIgnoreChildren,
+			["syntax:{}"] = TokenInclusionRule.IgnoreThisAndIncludeChildren,
+		};
+
+		protected void BreadthFirstSearch(List<Token> travelLog, ref int index, Dictionary<string, TokenInclusionRule> tokenRules = null) {
 			while(index < travelLog.Count) {
 				Token iter = travelLog[index];
+				if (tokenRules != null && tokenRules.TryGetValue(iter.MetaType, out TokenInclusionRule rule)) {
+					switch (rule) {
+						case TokenInclusionRule.IgnoreThisAndIgnoreChildren: travelLog.RemoveAt(index); continue;
+						case TokenInclusionRule.IgnoreThisAndIncludeChildren: travelLog.RemoveAt(index--); break;
+						case TokenInclusionRule.IncludeThisAndIgnoreChildren: ++index; continue;
+					}
+				}
 				SyntaxTree e = iter.GetAsSyntaxNode();
 				if (e != null) {
 					for (int i = 0; i < e.tokens.Count; ++i) {
 						Token token = e.tokens[i];
+#if __DEBUG_token_recursion
 						int inTheList = token.IsValidText ? travelLog.FindIndex(t=>t==token) : -1;
 						if (inTheList >= 0 && inTheList < index && travelLog[inTheList].IsValidText) {
 							throw new Exception("recursion! " + token.index + " " + token);
 						}
 						if (inTheList < 0 && token.GetAsSyntaxNode() != e) {
+#else
+						if (token.GetAsSyntaxNode() != e) {
+#endif
 							travelLog.Add(token);
 						}
 					}

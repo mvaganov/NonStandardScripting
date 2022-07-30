@@ -359,7 +359,7 @@ namespace NonStandard.Data.Parse {
 		private static Dictionary<string, TokenInclusionRule> _defaultTokenInclusionRules = new Dictionary<string, TokenInclusionRule>() {
 			["syntax:string"] = TokenInclusionRule.IncludeThisAndIgnoreChildren,
 			["syntax://"] = TokenInclusionRule.IncludeThisAndIgnoreChildren,
-			["syntax:{}"] = TokenInclusionRule.IgnoreThisAndIncludeChildren,
+			//["syntax:{}"] = TokenInclusionRule.IgnoreThisAndIncludeChildren,
 		};
 
 		protected void BreadthFirstSearch(List<Token> travelLog, ref int index, Dictionary<string, TokenInclusionRule> tokenRules = null) {

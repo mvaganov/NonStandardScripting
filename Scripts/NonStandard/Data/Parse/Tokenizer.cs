@@ -57,6 +57,7 @@ namespace NonStandard.Data.Parse {
 		/// TODO testme! does this produce all of the tokens in string form?
 		/// </summary>
 		protected List<string> tokenStrings = new List<string>();
+		protected TokenizeProcess _tokenizeProcess;
 		public int TokenCount { get { return tokens.Count; } }
 		/// <param name="i"></param>
 		/// <returns>raw token data</returns>
@@ -213,6 +214,54 @@ namespace NonStandard.Data.Parse {
 				}
 			}
 		}
+
+		public class TokenizeProcess {
+			public Tokenizer self;
+			public ParseRuleSet parseRules = null;
+			public int index = 0;
+			public Func<Tokenizer, bool> condition = null;
+			private int lastIndex, tokenBegin;
+			private ParseRuleSet currentContext;
+			private List<SyntaxTree> contextStack;
+			public int Progress => index;
+			public int Total => self.str.Length;
+			public TokenizeProcess(Tokenizer self, ParseRuleSet parseRules = null, int index = 0, Func<Tokenizer, bool> condition = null) {
+				this.self = self;this.parseRules = parseRules; this.index = index; this.condition = condition;
+			}
+			public void Initialize() {
+				self.tokenStrings.Clear();
+				if (string.IsNullOrEmpty(self.str)) return;
+				contextStack = new List<SyntaxTree>();
+				if (parseRules == null) {
+					parseRules = CodeRules.Default;
+				} else { contextStack.Add(parseRules.GetEntry(self.tokens, -1, null)); }
+				tokenBegin = -1;
+				currentContext = parseRules;
+				//Show.Log("parsing \""+str+"\" with ["+currentContext.name+"]");
+				lastIndex = index - 1;
+			}
+			public bool IsParsing() {
+				return index < self.str.Length && (condition == null || condition.Invoke(self));
+			}
+			public bool Iterate() {
+				if (self._tokenizeProcess != this) { return false; }
+				if (contextStack == null) {
+					Initialize();
+					return true;
+				}
+				if (IsParsing()) {
+					self.Iterate(ref index, ref lastIndex, ref tokenBegin, ref currentContext, contextStack, parseRules);
+					return true;
+				}
+				Finish();
+				return false;
+			}
+			public void Finish() {
+				self.FinishParse(index, ref tokenBegin);
+				self._tokenizeProcess = null;
+			}
+		}
+
 		/// <param name="parseRules"></param>
 		/// <param name="index"></param>
 		/// <param name="condition">allows parsing to exit early, if the early part of the string is sufficient for example</param>
@@ -229,20 +278,44 @@ namespace NonStandard.Data.Parse {
 			//Show.Log("parsing \""+str+"\" with ["+currentContext.name+"]");
 			int lastIndex = index-1;
 			while (index < str.Length && (condition == null || condition.Invoke(this))) {
-				if (index <= lastIndex) { throw new Exception("tokenize algorithm problem, the index isn't advancing"); }
-				char c = str[index];
-				WhatsThis(currentContext, index, tokenBegin, parseRules, out Delim delim, out bool isWhiteSpace);
-				if (delim != null) {
-					FinishToken(index, ref tokenBegin); // finish whatever token was being read before this delimeter
-					HandleDelimiter(delim, ref index, contextStack, ref currentContext, parseRules);
-				} else if (!isWhiteSpace) {
-					if (tokenBegin < 0) { tokenBegin = index; }
-				} else {
-					FinishToken(index, ref tokenBegin); // handle whitespace
-				}
-				if (rows != null && c == '\n') { rows.Add(index); }
-				++index;
+				Iterate(ref index, ref lastIndex, ref tokenBegin, ref currentContext, contextStack, parseRules);
+				//if (index <= lastIndex) { throw new Exception("tokenize algorithm problem, the index isn't advancing"); }
+				//char c = str[index];
+				//WhatsThis(currentContext, index, tokenBegin, parseRules, out Delim delim, out bool isWhiteSpace);
+				//if (delim != null) {
+				//	FinishToken(index, ref tokenBegin); // finish whatever token was being read before this delimeter
+				//	HandleDelimiter(delim, ref index, contextStack, ref currentContext, parseRules);
+				//} else if (!isWhiteSpace) {
+				//	if (tokenBegin < 0) { tokenBegin = index; }
+				//} else {
+				//	FinishToken(index, ref tokenBegin); // handle whitespace
+				//}
+				//if (rows != null && c == '\n') { rows.Add(index); }
+				//++index;
 			}
+			FinishParse(index, ref tokenBegin);
+			//FinishToken(index, ref tokenBegin); // add the last token that was still being processed
+			//FinalTokenCleanup();
+			////DebugPrint(-1);
+			//ApplyOperators();
+		}
+		private void Iterate(ref int index, ref int lastIndex, ref int tokenBegin, 
+		ref ParseRuleSet currentContext, List<SyntaxTree> contextStack, ParseRuleSet parseRules) {
+			if (index <= lastIndex) { throw new Exception("tokenize algorithm problem, the index isn't advancing"); }
+			char c = str[index];
+			WhatsThis(currentContext, index, tokenBegin, parseRules, out Delim delim, out bool isWhiteSpace);
+			if (delim != null) {
+				FinishToken(index, ref tokenBegin); // finish whatever token was being read before this delimeter
+				HandleDelimiter(delim, ref index, contextStack, ref currentContext, parseRules);
+			} else if (!isWhiteSpace) {
+				if (tokenBegin < 0) { tokenBegin = index; }
+			} else {
+				FinishToken(index, ref tokenBegin); // handle whitespace
+			}
+			if (rows != null && c == '\n') { rows.Add(index); }
+			++index;
+		}
+		private void FinishParse(int index, ref int tokenBegin) {
 			FinishToken(index, ref tokenBegin); // add the last token that was still being processed
 			FinalTokenCleanup();
 			//DebugPrint(-1);

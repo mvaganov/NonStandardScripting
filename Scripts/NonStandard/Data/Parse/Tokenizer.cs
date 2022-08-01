@@ -53,10 +53,6 @@ namespace NonStandard.Data.Parse {
 		/// a tree of tokens, where each token might have meta data that is another list of tokens
 		/// </summary>
 		internal List<Token> tokens = new List<Token>();
-		/// <summary>
-		/// TODO testme! does this produce all of the tokens in string form?
-		/// </summary>
-		protected List<string> tokenStrings = new List<string>();
 		protected TokenizeProcess _tokenizeProcess;
 		public int TokenCount { get { return tokens.Count; } }
 		/// <param name="i"></param>
@@ -64,6 +60,7 @@ namespace NonStandard.Data.Parse {
 		public Token GetToken(int i) { return tokens[i]; }
 		public string GetString() => str;
 		public IList<Token> Tokens => tokens;
+		public enum State { None, Touched, Waiting, Initialize, Iterating, Finished }
 		/// <summary>
 		/// the method you're looking for if the tokens are doing something fancy, like resolving to objects
 		/// </summary>
@@ -109,7 +106,6 @@ namespace NonStandard.Data.Parse {
 		public Tokenizer(Tokenizer toCopy) {
 			this.str = toCopy.str;
 			this.tokens = toCopy.tokens.Copy();
-			this.tokenStrings = toCopy.tokenStrings.Copy();
 			this.rows = toCopy.rows.Copy();
 		}
 		public Token GetMasterToken() { return GetMasterToken(tokens, str); }
@@ -140,6 +136,22 @@ namespace NonStandard.Data.Parse {
 			tokens.Clear();
 			rows.Clear();
 			Tokenize(parsingRules, 0, condition);
+		}
+		public State TokenizeIncrementally(string str, ParseRuleSet parsingRules = null, Func<Tokenizer, bool> condition = null) {
+			if (_tokenizeProcess == null) {
+				this.str = str;
+				errors.Clear();
+				tokens.Clear();
+				rows.Clear();
+				_tokenizeProcess = new TokenizeProcess(this, parsingRules, 0, condition);
+			}
+			return _tokenizeProcess.Iterate();
+		}
+		public State TokenizeIncrementally() {
+			if (_tokenizeProcess == null) {
+				throw new Exception($"must call parameterized {nameof(TokenizeIncrementally)} first");
+			}
+			return _tokenizeProcess.Iterate();
 		}
 		public static Tokenizer Tokenize(string str) {
 			Tokenizer t = new Tokenizer(); t.Tokenize(str, null); return t;
@@ -225,11 +237,11 @@ namespace NonStandard.Data.Parse {
 			private List<SyntaxTree> contextStack;
 			public int Progress => index;
 			public int Total => self.str.Length;
+			public bool finished = false;
 			public TokenizeProcess(Tokenizer self, ParseRuleSet parseRules = null, int index = 0, Func<Tokenizer, bool> condition = null) {
 				this.self = self;this.parseRules = parseRules; this.index = index; this.condition = condition;
 			}
 			public void Initialize() {
-				self.tokenStrings.Clear();
 				if (string.IsNullOrEmpty(self.str)) return;
 				contextStack = new List<SyntaxTree>();
 				if (parseRules == null) {
@@ -243,22 +255,22 @@ namespace NonStandard.Data.Parse {
 			public bool IsParsing() {
 				return index < self.str.Length && (condition == null || condition.Invoke(self));
 			}
-			public bool Iterate() {
-				if (self._tokenizeProcess != this) { return false; }
+			public State Iterate() {
+				if (finished) { return State.Finished; }
 				if (contextStack == null) {
 					Initialize();
-					return true;
+					return State.Initialize;
 				}
 				if (IsParsing()) {
 					self.Iterate(ref index, ref lastIndex, ref tokenBegin, ref currentContext, contextStack, parseRules);
-					return true;
+					return State.Iterating;
 				}
 				Finish();
-				return false;
+				return State.Finished;
 			}
 			public void Finish() {
 				self.FinishParse(index, ref tokenBegin);
-				self._tokenizeProcess = null;
+				finished = true;
 			}
 		}
 
@@ -266,7 +278,6 @@ namespace NonStandard.Data.Parse {
 		/// <param name="index"></param>
 		/// <param name="condition">allows parsing to exit early, if the early part of the string is sufficient for example</param>
 		protected void Tokenize(ParseRuleSet parseRules = null, int index = 0, Func<Tokenizer, bool> condition = null) {
-			tokenStrings.Clear();
 			if (string.IsNullOrEmpty(str)) return;
 			List<SyntaxTree> contextStack = new List<SyntaxTree>();
 			if (parseRules == null) {
@@ -279,25 +290,8 @@ namespace NonStandard.Data.Parse {
 			int lastIndex = index-1;
 			while (index < str.Length && (condition == null || condition.Invoke(this))) {
 				Iterate(ref index, ref lastIndex, ref tokenBegin, ref currentContext, contextStack, parseRules);
-				//if (index <= lastIndex) { throw new Exception("tokenize algorithm problem, the index isn't advancing"); }
-				//char c = str[index];
-				//WhatsThis(currentContext, index, tokenBegin, parseRules, out Delim delim, out bool isWhiteSpace);
-				//if (delim != null) {
-				//	FinishToken(index, ref tokenBegin); // finish whatever token was being read before this delimeter
-				//	HandleDelimiter(delim, ref index, contextStack, ref currentContext, parseRules);
-				//} else if (!isWhiteSpace) {
-				//	if (tokenBegin < 0) { tokenBegin = index; }
-				//} else {
-				//	FinishToken(index, ref tokenBegin); // handle whitespace
-				//}
-				//if (rows != null && c == '\n') { rows.Add(index); }
-				//++index;
 			}
 			FinishParse(index, ref tokenBegin);
-			//FinishToken(index, ref tokenBegin); // add the last token that was still being processed
-			//FinalTokenCleanup();
-			////DebugPrint(-1);
-			//ApplyOperators();
 		}
 		private void Iterate(ref int index, ref int lastIndex, ref int tokenBegin, 
 		ref ParseRuleSet currentContext, List<SyntaxTree> contextStack, ParseRuleSet parseRules) {
@@ -339,7 +333,6 @@ namespace NonStandard.Data.Parse {
 				int len = index - tokenBegin;
 				if (len > 0) {
 					tokens.Add(new Token(str, tokenBegin, len));
-					tokenStrings.Add(str.Substring(tokenBegin, len));
 				}
 				tokenBegin = -1;
 				return true;
@@ -388,7 +381,6 @@ namespace NonStandard.Data.Parse {
 				}
 			}
 			tokens.Add(delimToken);
-			tokenStrings.Add(delim.text);
 			if (endedSyntax != null) { ExtractContextAsSubTokenList(endedSyntax); }
 		}
 		private void FinalTokenCleanup() {
@@ -421,13 +413,19 @@ namespace NonStandard.Data.Parse {
 			IncludeThisAndIgnoreChildren
 		}
 
-		public void GetAllTokens(List<Token> out_tokens, Dictionary<string,TokenInclusionRule> tokenRules = null) {
+		public List<Token> GetStandardTokens() {
+			List<Token> out_tokens = new List<Token>();
+			GetStandardTokens(out_tokens);
+			return out_tokens;
+		}
+
+		public void GetStandardTokens(List<Token> out_tokens) { GetAllTokens(out_tokens, _defaultTokenInclusionRules); }
+
+		public void GetAllTokens(List<Token> out_tokens, Dictionary<string, TokenInclusionRule> tokenRules = null) {
 			int index = 0;
 			out_tokens.AddRange(tokens);
 			BreadthFirstSearch(out_tokens, ref index, tokenRules);
 		}
-
-		public void GetStandardTokens(List<Token> out_tokens) { GetAllTokens(out_tokens, _defaultTokenInclusionRules); }
 
 		private static Dictionary<string, TokenInclusionRule> _defaultTokenInclusionRules = new Dictionary<string, TokenInclusionRule>() {
 			["syntax:string"] = TokenInclusionRule.IncludeThisAndIgnoreChildren,

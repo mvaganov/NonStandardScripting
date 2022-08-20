@@ -349,7 +349,8 @@ namespace NonStandard.Data.Parse {
 		public static bool op_SearchForMember(string name, out object value, out Type type, object scope) {
 			switch (name) { // TODO can this switch be removed because the tokens are in CodeRules?
 			case "null": value = null; type = null; return true;
-			case "this": UnityEngine.Debug.Log("           THIS! ["+scope+"]"); break;// value = scope; type = scope.GetType(); return true;
+			case "this": //UnityEngine.Debug.Log("           THIS! ["+scope+"]");
+									 break;// value = scope; type = scope.GetType(); return true;
 			case "True": value = true; type = typeof(bool); return true;
 			case "False": value = false; type = typeof(bool); return true;
 			}
@@ -365,7 +366,7 @@ namespace NonStandard.Data.Parse {
 				return op_SearchForMember(path.ToString(), out value, out type, scope);
 			}
 			if (path.IsSyntax) {
-				UnityEngine.Debug.Log("hey check me out!");
+				//UnityEngine.Debug.Log("hey check me out!");
 				SyntaxTree tree = path.GetAsSyntaxNode();
 				if (tree.IsMembershipOperation) {
 					if (!op_SearchForMember(tree.tokens[0], out value, out type, scope)) {

@@ -127,6 +127,9 @@ namespace NonStandard.Data.Parse {
 			}
 			return ParseError.FilePositionOf(token, rows);
 		}
+		public bool TryGetIndexOfFilePosition(int row, int col, out int index) {
+			return ParseError.TryGetIndexOfFilePosition(row, col, rows, out index);
+		}
 		/// <param name="str"></param>
 		/// <param name="parsingRules"></param>
 		/// <param name="condition">allows parsing to exit early, if the early part of the string is sufficient for example</param>

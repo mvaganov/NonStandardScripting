@@ -29,6 +29,24 @@ namespace NonStandard.Data.Parse {
 			col = index - rowStart;
 			if (row == 0) ++col;
 		}
+		public static bool TryGetIndexOfFilePosition(int row, int col, IList<int> rows, out int index) {
+			if (row < 0) {
+				index = 0;
+				return false;
+			}
+			if (row >= rows.Count) {
+				index = rows[rows.Count-1];
+				return false;
+			}
+			int wherePreviousRowEnds = row > 0 ? rows[row - 1] : 0;
+			index = wherePreviousRowEnds + col + ((row > 0) ? 1 : 0);
+			int whereThisRowEnds = rows[row];
+			if (index > whereThisRowEnds) {
+				index = whereThisRowEnds;
+				return false;
+			}
+			return true;
+		}
 		public static string FilePositionOf(Token token, IList<int> indexOfRowEnd) {
 			int row, col; FilePositionOf(token, indexOfRowEnd, out row, out col);
 			return (row + 1) + "," + (col);

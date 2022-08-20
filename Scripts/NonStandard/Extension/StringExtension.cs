@@ -97,7 +97,7 @@ namespace NonStandard.Extension {
 		}
 
 		public static string ForEachBetween(this string str, Func<string, string> manipulateSubstring, string delimiter = "\n") {
-			List<string> lines = str.Split(delimiter);
+			List<string> lines = new List<string>(str.Split(delimiter));
 			StringBuilder sb = new StringBuilder();
 			for (int i = 0; i < lines.Count; ++i) {
 				if (i > 0) sb.Append(delimiter);

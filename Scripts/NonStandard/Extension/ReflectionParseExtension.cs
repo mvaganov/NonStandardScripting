@@ -86,7 +86,9 @@ namespace NonStandard.Extension {
 			//Show.Log(variableNamePath);
 			IList<object> vars;
 			switch (variableNameOrPath) {
-			case string str: vars = str.Split(memberOperator).ConvertAll(s=>(object)s.Trim()); break;
+			case string str:
+					vars = new List<string>(str.Split(memberOperator)).ConvertAll(s=>(object)s.Trim());
+					break;
 			case IList<object> list: vars = list; break;
 			default: vars = new object[] { variableNameOrPath }; break;
 			}

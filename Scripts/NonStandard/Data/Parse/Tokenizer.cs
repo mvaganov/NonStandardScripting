@@ -1,7 +1,8 @@
-﻿//#define __DEBUG_token_recursion
+﻿#define __DEBUG_token_recursion
 using NonStandard.Extension;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace NonStandard.Data.Parse {
@@ -53,6 +54,9 @@ namespace NonStandard.Data.Parse {
 		/// a tree of tokens, where each token might have meta data that is another list of tokens
 		/// </summary>
 		internal List<Token> tokens = new List<Token>();
+		/// <summary>
+		/// the big Tokenize function, able to be broken up into cooperative multithreading
+		/// </summary>
 		protected TokenizeProcess _tokenizeProcess;
 		public int TokenCount { get { return tokens.Count; } }
 		/// <param name="i"></param>
@@ -60,7 +64,7 @@ namespace NonStandard.Data.Parse {
 		public Token GetToken(int i) { return tokens[i]; }
 		public string GetString() => str;
 		public IList<Token> Tokens => tokens;
-		public enum State { None, Touched, Waiting, Initialize, Iterating, Finished }
+		public enum State { None, Touched, Waiting, Initialize, Iterating, Finished, Error }
 		/// <summary>
 		/// the method you're looking for if the tokens are doing something fancy, like resolving to objects
 		/// </summary>
@@ -436,7 +440,20 @@ namespace NonStandard.Data.Parse {
 			//["syntax:{}"] = TokenInclusionRule.IgnoreThisAndIncludeChildren,
 		};
 
+		private struct TokenMark {
+			public int index, len;
+			public TokenMark(Token token) { index = token.index;len = token.length; }
+			public static implicit operator TokenMark(Token token) { return new TokenMark(token); }
+			public override bool Equals(object obj) {
+				if (obj == null) return false;
+				if (!(obj is TokenMark)) return false;
+				TokenMark other = (TokenMark)obj;
+				return index == other.index && len == other.len;
+			}
+			public override int GetHashCode() { return index & len; }
+		}
 		protected void BreadthFirstSearch(List<Token> travelLog, ref int index, Dictionary<string, TokenInclusionRule> tokenRules = null) {
+			HashSet<TokenMark> alreadyDiscovered = new HashSet<TokenMark>();
 			while(index < travelLog.Count) {
 				Token iter = travelLog[index];
 				if (tokenRules != null && tokenRules.TryGetValue(iter.MetaType, out TokenInclusionRule rule)) {
@@ -448,17 +465,21 @@ namespace NonStandard.Data.Parse {
 				}
 				SyntaxTree e = iter.GetAsSyntaxNode();
 				if (e != null) {
+					if (e.Length < 0) { ++index; continue; }
 					for (int i = 0; i < e.tokens.Count; ++i) {
 						Token token = e.tokens[i];
+						if (token == Token.None || token == Token.Ignore || alreadyDiscovered.Contains(token)) { continue; }
 #if __DEBUG_token_recursion
 						int inTheList = token.IsValidText ? travelLog.FindIndex(t=>t==token) : -1;
 						if (inTheList >= 0 && inTheList < index && travelLog[inTheList].IsValidText) {
 							throw new Exception("recursion! " + token.index + " " + token);
+							//continue;
 						}
 						if (inTheList < 0 && token.GetAsSyntaxNode() != e) {
 #else
 						if (token.GetAsSyntaxNode() != e) {
 #endif
+							alreadyDiscovered.Add(token);
 							travelLog.Add(token);
 						}
 					}

@@ -30,7 +30,7 @@ namespace NonStandard.Data.Parse {
 			if (row == 0) ++col;
 		}
 		public static bool TryGetIndexOfFilePosition(int row, int col, IList<int> rows, out int index) {
-			if (row < 0) {
+			if (row < 0 || rows.Count == 0) {
 				index = 0;
 				return false;
 			}

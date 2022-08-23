@@ -175,8 +175,13 @@ namespace NonStandard.Data.Parse {
 			}
 			return sequence;
 		}
-		public Token GetBeginToken() { return tokens[tokenStart]; }
-		public Token GetEndToken() { return tokens[tokenStart + tokenCount - 1]; }
+		public Token GetBeginToken() {
+			return tokenStart >= 0 && tokenStart < tokens.Count ? tokens[tokenStart] : Token.None;
+		}
+		public Token GetEndToken() {
+			int tokenEnd = tokenStart + tokenCount - 1;
+			return tokenEnd >= 0 && tokenEnd < tokens.Count ? tokens[tokenEnd] : Token.None;
+		}
 		public int GetIndexBegin() { return GetBeginToken().GetBeginIndex(); }
 		public int GetIndexEnd() { return GetEndToken().GetEndIndex(); }
 		public bool IsBegin(Token t) { return t == GetBeginToken(); }

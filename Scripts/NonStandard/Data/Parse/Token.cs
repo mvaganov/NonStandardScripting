@@ -24,7 +24,7 @@ namespace NonStandard.Data.Parse {
 		private static Token _None = new Token(null, -1, -1);
 		private static Token _Ignore = new Token(null, -1, -2);
 		public static Token None => _None;
-		public static Token Ignore => _None;
+		public static Token Ignore => _Ignore;
 		/// <summary>
 		/// a token can be valid without meta data, as a simple marker. but if it has invalid marks, and no data, it's bad.
 		/// </summary>
@@ -61,7 +61,7 @@ namespace NonStandard.Data.Parse {
 		public override string ToString() { return GetAsBasicToken(); }
 		public string ToDebugString() {
 			SyntaxTree syntax = meta as SyntaxTree;
-			if (syntax == null) { return Resolve(null, null).ToString(); }
+			if (syntax == null) { return null; }// Resolve(null, null).ToString(); }
 			Delim d = syntax.sourceMeta as Delim;
 			if(d != null) { return d.ToString(); }
 			if(IsValidText) return ToString(syntax.TextRaw);
@@ -162,7 +162,11 @@ namespace NonStandard.Data.Parse {
 				//if (len < 0) {
 				beginIndex = begin.index;
 				string endTokenText = end.GetAsSmallText();
-				len = end.index + endTokenText.Length - beginIndex;
+				if (endTokenText != null) {
+					len = end.index + endTokenText.Length - beginIndex;
+				} else {
+					len = -1;
+				}
 				//}
 				src = begin.meta as string;
 				if (src == null) { src = end.meta as string; }
@@ -176,7 +180,7 @@ namespace NonStandard.Data.Parse {
 				}
 				break;
 			}
-			if (src != null) { return src.Substring(beginIndex, len); }
+			if (src != null && len >= 0) { return src.Substring(beginIndex, len); }
 			return null;
 		}
 		public Delim GetAsDelimiter() { return meta as Delim; }

@@ -450,6 +450,8 @@ namespace NonStandard.Data.Parse {
 				TokenMark other = (TokenMark)obj;
 				return index == other.index && len == other.len;
 			}
+			public static bool operator==(TokenMark left, TokenMark right) { return left.Equals(right); }
+			public static bool operator!=(TokenMark left, TokenMark right) { return !left.Equals(right); }
 			public override int GetHashCode() { return index & len; }
 		}
 		protected void BreadthFirstSearch(List<Token> travelLog, ref int index, Dictionary<string, TokenInclusionRule> tokenRules = null) {

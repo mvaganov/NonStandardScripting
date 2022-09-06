@@ -78,7 +78,7 @@ namespace NonStandard.Data.Parse {
 		/// <param name="i"></param>
 		/// <param name="scope"></param>
 		/// <returns></returns>
-		public string GetStr(int i, object scope = null) {
+		public string GetTokenAsString(int i, object scope = null) {
 			if (i >= tokens.Count) return null;
 			object o = GetResolvedToken(i, scope);
 			return o != null ? o.ToString() : null;
@@ -171,7 +171,7 @@ namespace NonStandard.Data.Parse {
 		}
 		public static string FirstWord(string str) {
 			Tokenizer tokenizer = TokenizeWhile(str, t => t.tokens.Count == 0);
-			return (tokenizer?.tokens.Count > 0) ? tokenizer.GetStr(0) : null;
+			return (tokenizer?.tokens.Count > 0) ? tokenizer.GetTokenAsString(0) : null;
 		}
 		public string DebugPrint(int depth = 0, string indent = "  ", string separator = ", ") {
 			return DebugPrint(tokens, depth, indent, separator);

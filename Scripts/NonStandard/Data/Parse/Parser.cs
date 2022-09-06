@@ -1,9 +1,7 @@
 ﻿using NonStandard.Extension;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Text;
 
 namespace NonStandard.Data.Parse {
 	public class Parser {
@@ -16,20 +14,10 @@ namespace NonStandard.Data.Parse {
 		protected Type resultType;
 		/// the type that the next value needs to be
 		protected Type memberType;
-		// parse state
-		public class ParseState {
-			public int tokenIndex = 0;
-			public List<Token> tokens;
-			public Token Token { get { return tokens[tokenIndex]; } }
-		}
-		protected List<ParseState> state = new List<ParseState>();
-		public int[] GetCurrentTokenIndex() {
-			int[] index = new int[state.Count];
-			for (int i = 0; i < state.Count; ++i) {
-				index[i] = state[i].tokenIndex;
-			}
-			return index;
-		}
+		// state of parse TODO move to separate file, along with methods that do stuff with the _tokensBeingParsed stack.
+//		protected List<TokenLayerBeingParsed> _stackOfTokensBeingParsed = new List<TokenLayerBeingParsed>();
+		public ParserStackOfTokens tokenStack = new ParserStackOfTokens();
+		public List<TokenLayerBeingParsed> _stackOfTokensBeingParsed => tokenStack._stackOfTokensBeingParsed;
 		protected Tokenizer tok;
 		// for parsing a list
 		protected List<object> listData;
@@ -44,27 +32,34 @@ namespace NonStandard.Data.Parse {
 		protected KeyValuePair<Type, Type> dictionaryTypes;
 		protected MethodInfo dictionaryAdd;
 
-		internal ParseState Current { get { return state[state.Count - 1]; } }
-		protected void AddParseState(List<Token> tokenList, int index = 0) {
-			state.Add(new ParseState { tokens = tokenList, tokenIndex = index });
-		}
-		protected bool Increment() {
-			if (state.Count <= 0) return false;
-			ParseState pstate = state[state.Count - 1];
-			//Show.Warning(pstate.GetToken());
-			++pstate.tokenIndex;
-			while (pstate.tokenIndex >= pstate.tokens.Count) {
-				state.RemoveAt(state.Count - 1);
-				if (state.Count <= 0) return false;
-				pstate = state[state.Count - 1];
-				++pstate.tokenIndex;
-			}
-			return true;
-		}
+		// TODO cache this value instead of calling it so much...
+		internal TokenLayerBeingParsed Current => tokenStack.Current;//_stackOfTokensBeingParsed[_stackOfTokensBeingParsed.Count - 1];
+		//protected void PushTokensBeingParsed(List<Token> tokenList, int index = 0) {
+		//	_stackOfTokensBeingParsed.Add(new TokenLayerBeingParsed(tokenList, index));
+		//}
+		//protected bool Increment() {
+		//	if (_stackOfTokensBeingParsed.Count <= 0) return false;
+		//	TokenLayerBeingParsed pstate = PeekTokenBeingParsed();
+		//	//Show.Warning(pstate.GetToken());
+		//	++pstate._currentTokenIndex;
+		//	while (pstate._currentTokenIndex >= pstate.Tokens.Count) {
+		//		PopTokensBeingParsed();
+		//		if (_stackOfTokensBeingParsed.Count <= 0) return false;
+		//		pstate = PeekTokenBeingParsed();
+		//		++pstate._currentTokenIndex;
+		//	}
+		//	return true;
+		//}
+		//protected void PopTokensBeingParsed() {
+		//	_stackOfTokensBeingParsed.RemoveAt(_stackOfTokensBeingParsed.Count - 1);
+		//}
+		//protected TokenLayerBeingParsed PeekTokenBeingParsed() {
+		//	return _stackOfTokensBeingParsed[_stackOfTokensBeingParsed.Count - 1];
+		//}
 		protected bool SkipComments(bool incrementAtLeastOnce = false) {
 			SyntaxTree syntax = incrementAtLeastOnce ? SyntaxTree.None : null;
 			do {
-				if (syntax != null && !Increment()) return false;
+				if (syntax != null && !tokenStack.Increment()) return false;
 				syntax = Current.Token.GetAsSyntaxNode();
 			} while (syntax != null && syntax.IsComment);
 			return true;
@@ -123,15 +118,15 @@ namespace NonStandard.Data.Parse {
 		public bool Init(Type type, List<Token> tokens, object dataStructure, Tokenizer tokenizer, object scope) {
 			resultType = type;
 			tok = tokenizer;
-			state.Clear();
-			AddParseState(tokens);
+			_stackOfTokensBeingParsed.Clear();
+			tokenStack.PushTokensBeingParsed(tokens);
 			result = dataStructure;
 			this.scope = scope;
 			return SetResultTypeFull(type);
 		}
 
 		protected Type FindInternalType() {
-			if (Current.tokenIndex >= Current.tokens.Count) return null;
+			if (!Current.IsValid) return null;
 			if (!SkipComments()) { AddError("failed skipping comment for initial type"); return null; }
 			Token token = Current.Token;
 			Delim d = token.GetAsDelimiter();
@@ -162,13 +157,13 @@ namespace NonStandard.Data.Parse {
 		public bool TryParse(Type targetType = null) {
 			Token token = Current.Token;
 			SyntaxTree syntax = token.GetAsSyntaxNode();
-			if (syntax != null && syntax.tokens == Current.tokens) { Increment(); } // skip past the opening bracket
+			if (syntax != null && syntax.tokens == Current.Tokens) { tokenStack.Increment(); } // skip past the opening bracket
 			if (targetType != null) { SetResultType(targetType); }
 			FindInternalType(); // first, check if this has a more correct internal type defined
 			if (resultType == typeof(object)) {
 				// if it has colons or equals signs, it's a Dictionary<string,object>
 				bool hasNameBreaks = false;
-				List<Token> tokens = Current.tokens;
+				List<Token> tokens = Current.Tokens;
 				for (int i = 0; i < tokens.Count; ++i) {
 					string s = tokens[i].GetAsSmallText();
 					if (s == ":" || s == "=") { hasNameBreaks = true; break; }
@@ -189,10 +184,10 @@ namespace NonStandard.Data.Parse {
 		}
 		internal bool TryParse_internal() {
 			if (!SkipComments()) { return true; }
-			while (state.Count > 0 && Current.tokenIndex < Current.tokens.Count) {
+			while (_stackOfTokensBeingParsed.Count > 0 && Current._currentTokenIndex < Current.Tokens.Count) {
 				Token token = Current.Token;
 				SyntaxTree syntax = token.GetAsSyntaxNode();
-				if (syntax != null && syntax.tokens == Current.tokens) {
+				if (syntax != null && syntax.tokens == Current.Tokens) {
 					if (!token.IsContextEnding()) { AddError("unexpected state. we should never see this. ever."); }
 					break;
 				} // found the closing bracket!
@@ -201,16 +196,24 @@ namespace NonStandard.Data.Parse {
 						if (!GetMemberNameAndAssociatedType()) { return false; }
 					} else {
 						if (!TryGetValue()) { return false; }
-						if (memberValue != state) AssignValueToMember();
+						if (!IsMemberParseCancelled) AssignValueToMember();
 					}
 				} else {
 					if (!TryGetValue()) { return false; }
-					if (memberValue != state) listData.Add(memberValue);
+					if (!IsMemberParseCancelled) listData.Add(memberValue);
 				}
 				SkipComments(true);
 			}
 			FinalParseDataCompile();
 			return true;
+		}
+		private bool IsMemberParseCancelled {
+			get => memberValue == _stackOfTokensBeingParsed;
+			set {
+				if (value) { memberValue = _stackOfTokensBeingParsed; } else {
+					throw new Exception("incorrect use.");
+				}
+			}
 		}
 		protected void FinalParseDataCompile() {
 			if (listData == null) { return; }
@@ -236,14 +239,16 @@ namespace NonStandard.Data.Parse {
 				} else {
 					memberId = syntax.Resolve(tok, scope);// "dictionary member value will be resolved later";
 				}
-				if (syntax.tokens == Current.tokens) {
-					Current.tokenIndex += syntax.tokenCount - 1;
+				if (syntax.tokens == Current.Tokens) {
+					Current._currentTokenIndex += syntax.tokenCount - 1;
 				}
 			} else {
 				memberId = memberToken.GetAsBasicToken();
 			}
 			if (memberId == null) {
-				memberToken.index = -1; memberValue = state;
+				memberToken.index = -1;
+				IsMemberParseCancelled = true;
+				//memberValue = _stackOfTokensBeingParsed;
 				return true;
 			}
 			memberValue = null;
@@ -268,7 +273,8 @@ namespace NonStandard.Data.Parse {
 				AddError("unexpected delimiter \"" + delim.text + "\"");
 				return false;
 			}
-			memberValue = state;
+			IsMemberParseCancelled = true;
+			//memberValue = _stackOfTokensBeingParsed;
 			return true;
 		}
 		public static int AssignDictionaryMember(KeyValuePair<Type, Type> dType, MethodInfo dictionaryAddMethod,
@@ -299,10 +305,8 @@ namespace NonStandard.Data.Parse {
 			} else {
 				if (field != null) {
 					ReflectionParseExtension.TrySetValueCompiled(result, field, memberValue);
-					//AssignField(result, field, memberValue);
 				} else if (prop != null) {
 					ReflectionParseExtension.TrySetValueCompiled(result, prop, memberValue);
-					//AssignProperty(result, prop, memberValue);
 				} else {
 					throw new Exception("huh? how did we get here?");
 				}
@@ -322,23 +326,7 @@ namespace NonStandard.Data.Parse {
 			}
 			return null;
 		}
-		public static void AssignField(object obj, FieldInfo field, object memberValue) {
-			try {
-				//Show.Log("setting " + result + "." + field.Name + " = " + memberValue);
-				if (field.FieldType.IsEnum && memberValue is string str) { memberValue = Enum.Parse(field.FieldType, str); }
-				field.SetValue(obj, memberValue);
-			} catch (Exception e) {
-				throw new Exception("failed " + field.Name + " field.SetValue:" + e);
-			}
-		}
-		public static void AssignProperty(object obj, PropertyInfo prop, object memberValue) {
-			try {
-				if (prop.PropertyType.IsEnum && memberValue is string str) { memberValue = Enum.Parse(prop.PropertyType, str); }
-				prop.SetValue(obj, memberValue, null);
-			} catch (Exception e) {
-				throw new Exception("failed " + prop.Name + " field.SetValue:" + e);
-			}
-		}
+
 		/// <summary>
 		/// parse <see cref="memberType"/> out of the next token
 		/// </summary>
@@ -366,13 +354,13 @@ namespace NonStandard.Data.Parse {
 		}
 
 		private bool TryGetValue_Syntax(Token token, SyntaxTree syntax) {
-			bool subContextUsingSameList = syntax.tokens == Current.tokens;
+			bool subContextUsingSameList = syntax.tokens == Current.Tokens;
 			if (syntax.IsTextLiteral) {
 				memberValue = syntax.GetText();
 			} else {
-				int index = Current.tokenIndex;
+				int index = Current._currentTokenIndex;
 				List<Token> parseNext = subContextUsingSameList
-						? Current.tokens.GetRange(index, syntax.TokenCount)
+						? Current.Tokens.GetRange(index, syntax.TokenCount)
 						: syntax.tokens;
 				if (memberType == typeof(Expression)) {
 					Expression expr = new Expression(new List<Token>() { token });
@@ -402,7 +390,7 @@ namespace NonStandard.Data.Parse {
 				}
 			}
 			if (subContextUsingSameList) {
-				Current.tokenIndex += syntax.TokenCount - 1; // -1 because increment happens after this method
+				Current._currentTokenIndex += syntax.TokenCount - 1; // -1 because increment happens after this method
 			}
 			return true;
 		}
@@ -437,46 +425,5 @@ namespace NonStandard.Data.Parse {
 
 		protected void AddError(string message) { tok.AddError(Current.Token, message); }
 	}
-	public class MemberReflectionTable {
-		public string[] fieldNames, propNames;
-		public FieldInfo[] fields;
-		public PropertyInfo[] props;
-		public void SetType(Type type) {
-			fields = type.GetFields();
-			props = type.GetProperties();
-			Array.Sort(fields, (a, b) => a.Name.CompareTo(b.Name));
-			Array.Sort(props, (a, b) => a.Name.CompareTo(b.Name));
-			fieldNames = Array.ConvertAll(fields, f => f.Name);
-			propNames = Array.ConvertAll(props, p => p.Name);
-		}
-		public override string ToString() {
-			StringBuilder sb = new StringBuilder();
-			sb.Append(fieldNames.JoinToString(", "));
-			if (fieldNames.Length > 0 && propNames.Length > 0) { sb.Append(", "); }
-			sb.Append(propNames.JoinToString(", "));
-			return sb.ToString();
-		}
-		public FieldInfo GetField(string name) {
-			int index = ReflectionParseExtension.FindIndexWithWildcard(fieldNames, name, true); return (index < 0) ? null : fields[index];
-		}
-		public PropertyInfo GetProperty(string name) {
-			int index = ReflectionParseExtension.FindIndexWithWildcard(propNames, name, true); return (index < 0) ? null : props[index];
-		}
-		public bool TryGetMemberDetails(string memberName, out Type memberType, out FieldInfo field, out PropertyInfo prop) {
-			field = GetField(memberName);
-			if (field != null) {
-				memberType = field.FieldType;
-				prop = null;
-			} else {
-				prop = GetProperty(memberName);
-				if (prop != null) {
-					memberType = prop.PropertyType;
-				} else {
-					memberType = null;
-					return false;
-				}
-			}
-			return true;
-		}
-	}
+
 }

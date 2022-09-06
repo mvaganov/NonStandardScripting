@@ -136,7 +136,7 @@ namespace NonStandard.Data {
 				result = p.TryParse(type);
 				data = p.result;
 			} catch (Exception e) {
-				tokenizer.AddError("TryParseTokens:" + e + "\n" + p.GetCurrentTokenIndex().JoinToString(", ") + "\n" + tokenizer.DebugPrint());
+				tokenizer.AddError("TryParseTokens:" + e + "\n" + p.tokenStack.GetCurrentTokenIndex().JoinToString(", ") + "\n" + tokenizer.DebugPrint());
 			}
 			return result;
 		}

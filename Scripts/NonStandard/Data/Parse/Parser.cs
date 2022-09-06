@@ -14,10 +14,7 @@ namespace NonStandard.Data.Parse {
 		protected Type resultType;
 		/// the type that the next value needs to be
 		protected Type memberType;
-		// state of parse TODO move to separate file, along with methods that do stuff with the _tokensBeingParsed stack.
-//		protected List<TokenLayerBeingParsed> _stackOfTokensBeingParsed = new List<TokenLayerBeingParsed>();
 		public ParserStackOfTokens tokenStack = new ParserStackOfTokens();
-		public List<TokenLayerBeingParsed> _stackOfTokensBeingParsed => tokenStack._stackOfTokensBeingParsed;
 		protected Tokenizer tok;
 		// for parsing a list
 		protected List<object> listData;
@@ -32,30 +29,11 @@ namespace NonStandard.Data.Parse {
 		protected KeyValuePair<Type, Type> dictionaryTypes;
 		protected MethodInfo dictionaryAdd;
 
+		public List<TokenLayerBeingParsed> _stackOfTokensBeingParsed => tokenStack._stackOfTokensBeingParsed;
 		// TODO cache this value instead of calling it so much...
 		internal TokenLayerBeingParsed Current => tokenStack.Current;//_stackOfTokensBeingParsed[_stackOfTokensBeingParsed.Count - 1];
-		//protected void PushTokensBeingParsed(List<Token> tokenList, int index = 0) {
-		//	_stackOfTokensBeingParsed.Add(new TokenLayerBeingParsed(tokenList, index));
-		//}
-		//protected bool Increment() {
-		//	if (_stackOfTokensBeingParsed.Count <= 0) return false;
-		//	TokenLayerBeingParsed pstate = PeekTokenBeingParsed();
-		//	//Show.Warning(pstate.GetToken());
-		//	++pstate._currentTokenIndex;
-		//	while (pstate._currentTokenIndex >= pstate.Tokens.Count) {
-		//		PopTokensBeingParsed();
-		//		if (_stackOfTokensBeingParsed.Count <= 0) return false;
-		//		pstate = PeekTokenBeingParsed();
-		//		++pstate._currentTokenIndex;
-		//	}
-		//	return true;
-		//}
-		//protected void PopTokensBeingParsed() {
-		//	_stackOfTokensBeingParsed.RemoveAt(_stackOfTokensBeingParsed.Count - 1);
-		//}
-		//protected TokenLayerBeingParsed PeekTokenBeingParsed() {
-		//	return _stackOfTokensBeingParsed[_stackOfTokensBeingParsed.Count - 1];
-		//}
+
+		protected bool AdvanceToken() => SkipComments(true);
 		protected bool SkipComments(bool incrementAtLeastOnce = false) {
 			SyntaxTree syntax = incrementAtLeastOnce ? SyntaxTree.None : null;
 			do {
@@ -71,6 +49,7 @@ namespace NonStandard.Data.Parse {
 				reflectTable.SetType(type);
 			}
 		}
+
 		protected Type SetResultType(string typeName) {
 			Type t = Type.GetType(typeName);
 			if (t == null) {
@@ -88,7 +67,7 @@ namespace NonStandard.Data.Parse {
 			return t;
 		}
 
-		public bool SetResultTypeFull(Type type) {
+		public bool CalculateResultType(Type type) {
 			SetResultType(type);
 			if (type != null) {
 				memberType = type.GetIListType();
@@ -115,6 +94,7 @@ namespace NonStandard.Data.Parse {
 			}
 			return true;
 		}
+
 		public bool Init(Type type, List<Token> tokens, object dataStructure, Tokenizer tokenizer, object scope) {
 			resultType = type;
 			tok = tokenizer;
@@ -122,21 +102,21 @@ namespace NonStandard.Data.Parse {
 			tokenStack.PushTokensBeingParsed(tokens);
 			result = dataStructure;
 			this.scope = scope;
-			return SetResultTypeFull(type);
+			return CalculateResultType(type);
 		}
 
-		protected Type FindInternalType() {
+		protected Type FindScriptedTypecast() {
 			if (!Current.IsValid) return null;
 			if (!SkipComments()) { AddError("failed skipping comment for initial type"); return null; }
 			Token token = Current.Token;
 			Delim d = token.GetAsDelimiter();
 			if (d != null) {
 				if (d.text == "=" || d.text == ":") {
-					SkipComments(true);
+					AdvanceToken();
 					memberType = typeof(string);
 					if (!TryGetValue()) { return null; }
 					memberType = null;
-					SkipComments(true);
+					AdvanceToken();
 					string typeName = memberValue.ToString();
 					//Show.Log("looking for member type "+typeName);
 					try {
@@ -157,9 +137,9 @@ namespace NonStandard.Data.Parse {
 		public bool TryParse(Type targetType = null) {
 			Token token = Current.Token;
 			SyntaxTree syntax = token.GetAsSyntaxNode();
-			if (syntax != null && syntax.tokens == Current.Tokens) { tokenStack.Increment(); } // skip past the opening bracket
+			if (IsCurrentTokenLayer(syntax)) { tokenStack.Increment(); } // skip past the opening bracket
 			if (targetType != null) { SetResultType(targetType); }
-			FindInternalType(); // first, check if this has a more correct internal type defined
+			FindScriptedTypecast(); // first, check if this has a more correct internal type defined
 			if (resultType == typeof(object)) {
 				// if it has colons or equals signs, it's a Dictionary<string,object>
 				bool hasNameBreaks = false;
@@ -174,7 +154,7 @@ namespace NonStandard.Data.Parse {
 				} else {
 					result = new List<object>();
 				}
-				SetResultTypeFull(result.GetType());
+				CalculateResultType(result.GetType());
 			}
 			if (result == null && listData == null) {
 				AddError("need specific " + resultType + ", eg: \"" + resultType.GetSubClasses().JoinToString("\", \"") + "\"");
@@ -182,12 +162,13 @@ namespace NonStandard.Data.Parse {
 			}
 			return TryParse_internal();
 		}
+		private bool IsCurrentTokenLayer(SyntaxTree syntax) => syntax != null && syntax.tokens == Current.Tokens;
 		internal bool TryParse_internal() {
 			if (!SkipComments()) { return true; }
 			while (_stackOfTokensBeingParsed.Count > 0 && Current._currentTokenIndex < Current.Tokens.Count) {
 				Token token = Current.Token;
 				SyntaxTree syntax = token.GetAsSyntaxNode();
-				if (syntax != null && syntax.tokens == Current.Tokens) {
+				if (IsCurrentTokenLayer(syntax)) {
 					if (!token.IsContextEnding()) { AddError("unexpected state. we should never see this. ever."); }
 					break;
 				} // found the closing bracket!
@@ -202,7 +183,7 @@ namespace NonStandard.Data.Parse {
 					if (!TryGetValue()) { return false; }
 					if (!IsMemberParseCancelled) listData.Add(memberValue);
 				}
-				SkipComments(true);
+				AdvanceToken();
 			}
 			FinalParseDataCompile();
 			return true;
@@ -239,7 +220,7 @@ namespace NonStandard.Data.Parse {
 				} else {
 					memberId = syntax.Resolve(tok, scope);// "dictionary member value will be resolved later";
 				}
-				if (syntax.tokens == Current.Tokens) {
+				if (IsCurrentTokenLayer(syntax)) {
 					Current._currentTokenIndex += syntax.tokenCount - 1;
 				}
 			} else {
@@ -354,7 +335,7 @@ namespace NonStandard.Data.Parse {
 		}
 
 		private bool TryGetValue_Syntax(Token token, SyntaxTree syntax) {
-			bool subContextUsingSameList = syntax.tokens == Current.Tokens;
+			bool subContextUsingSameList = IsCurrentTokenLayer(syntax);
 			if (syntax.IsTextLiteral) {
 				memberValue = syntax.GetText();
 			} else {
